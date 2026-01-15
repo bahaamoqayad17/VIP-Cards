@@ -7,16 +7,16 @@ import jwt from "jsonwebtoken";
 
 export async function POST(request: NextRequest) {
   // Check if the user exists
-  // Find user by email
-  const { email, password, rememberMe } = await request.json();
+  // Find user by mobile number
+  const { mobile_number, password, rememberMe } = await request.json();
   await connectToDatabase();
 
-  const user = await User.findOne({ email });
+  const user = await User.findOne({ mobile_number });
 
   if (!user) {
     return NextResponse.json({
       status: false,
-      error: "invalidEmailOrPassword",
+      error: "invalidMobileOrPassword",
     });
   }
 
@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
   if (!isValid) {
     return NextResponse.json({
       status: false,
-      error: "invalidEmailOrPassword",
+      error: "invalidMobileOrPassword",
     });
   }
 
@@ -34,6 +34,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       status: false,
       error: "userNotVerified",
+    });
+  }
+
+  // Check if user is an admin
+  if (user.role !== "admin") {
+    return NextResponse.json({
+      status: false,
+      error: "notAdmin",
+      message: "فقط المسؤولون يمكنهم تسجيل الدخول",
     });
   }
 
