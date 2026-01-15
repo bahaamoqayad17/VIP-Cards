@@ -6,11 +6,11 @@ import Place from "@/models/Place";
 export async function getPlaces() {
   await connectToDatabase();
   try {
-    const places = await Place.find().sort({ createdAt: -1 });
+    const places = await Place.find().sort({ createdAt: -1 }).lean();
     return {
       status: true,
       message: "Places fetched successfully",
-      data: places,
+      data: JSON.parse(JSON.stringify(places)),
     };
   } catch (error) {
     console.error(error);
@@ -41,7 +41,7 @@ export async function createPlace(data: { name: string }) {
       success: true,
       status: true,
       message: "تم إضافة المكان بنجاح",
-      data: place,
+      data: JSON.parse(JSON.stringify(place)),
     };
   } catch (error: unknown) {
     console.error(error);
@@ -81,7 +81,7 @@ export async function updatePlace(id: string, data: { name: string }) {
     const place = await Place.findByIdAndUpdate(
       id,
       { name: name.trim() },
-      { new: true }
+      { new: true, lean: true }
     );
 
     if (!place) {
@@ -97,7 +97,7 @@ export async function updatePlace(id: string, data: { name: string }) {
       success: true,
       status: true,
       message: "تم تحديث المكان بنجاح",
-      data: place,
+      data: JSON.parse(JSON.stringify(place)),
     };
   } catch (error: unknown) {
     console.error(error);

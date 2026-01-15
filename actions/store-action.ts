@@ -9,11 +9,12 @@ export async function getStores() {
     const stores = await Store.find()
       .sort({ createdAt: -1 })
       .populate("place")
-      .populate("category");
+      .populate("category")
+      .lean();
     return {
       status: true,
       message: "Stores fetched successfully",
-      data: stores,
+      data: JSON.parse(JSON.stringify(stores)),
     };
   } catch (error) {
     console.error(error);
@@ -54,7 +55,7 @@ export async function createStore(data: {
       success: true,
       status: true,
       message: "تم إضافة المحل بنجاح",
-      data: store,
+      data: JSON.parse(JSON.stringify(store)),
     };
   } catch (error: unknown) {
     console.error(error);
@@ -101,7 +102,7 @@ export async function updateStore(
         category: category.trim(),
         discount: discount,
       },
-      { new: true }
+      { new: true, lean: true }
     );
     if (!store) {
       return {
@@ -116,7 +117,7 @@ export async function updateStore(
       success: true,
       status: true,
       message: "تم تحديث المحل بنجاح",
-      data: store,
+      data: JSON.parse(JSON.stringify(store)),
     };
   } catch (error: unknown) {
     console.error(error);

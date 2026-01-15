@@ -6,11 +6,11 @@ import Category from "@/models/Category";
 export async function getCategories() {
   await connectToDatabase();
   try {
-    const categories = await Category.find().sort({ createdAt: -1 });
+    const categories = await Category.find().sort({ createdAt: -1 }).lean();
     return {
       status: true,
       message: "Categories fetched successfully",
-      data: categories,
+      data: JSON.parse(JSON.stringify(categories)),
     };
   } catch (error) {
     console.error(error);
@@ -44,7 +44,7 @@ export async function createCategory(data: { name: string; letter: string }) {
       success: true,
       status: true,
       message: "تم إضافة نوع المكان بنجاح",
-      data: category,
+      data: JSON.parse(JSON.stringify(category)),
     };
   } catch (error: unknown) {
     console.error(error);
@@ -87,7 +87,7 @@ export async function updateCategory(
     const category = await Category.findByIdAndUpdate(
       id,
       { name: name.trim(), letter: letter.trim() },
-      { new: true }
+      { new: true, lean: true }
     );
 
     if (!category) {
@@ -103,7 +103,7 @@ export async function updateCategory(
       success: true,
       status: true,
       message: "تم تحديث نوع المكان بنجاح",
-      data: category,
+      data: JSON.parse(JSON.stringify(category)),
     };
   } catch (error: unknown) {
     console.error(error);
