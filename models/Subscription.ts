@@ -1,11 +1,16 @@
 import mongoose, { InferSchemaType } from "mongoose";
+import { UserType } from "./User";
 
 const subscriptionSchema = new mongoose.Schema(
   {
     user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     startDate: { type: Date },
     expiresAt: { type: Date },
-    status: { type: String, enum: ["active", "expired", "cancelled"] },
+    status: {
+      type: String,
+      enum: ["active", "expired", "cancelled"],
+      default: "active",
+    },
   },
   { timestamps: true }
 );
@@ -15,7 +20,7 @@ export type SubscriptionType = Omit<
   ""
 > & {
   _id: mongoose.Types.ObjectId | string;
-  user: mongoose.Types.ObjectId | string;
+  user: UserType | mongoose.Types.ObjectId | string;
   startDate: Date;
   expiresAt: Date;
   status: string;
