@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -10,12 +10,13 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Copy, Check } from "lucide-react";
+import { Copy, Check, ExternalLink } from "lucide-react";
 import { UserType } from "@/models/User";
 import { SubscriptionType } from "@/models/Subscription";
 import Image from "next/image";
 import { getSubscriptionByUserId } from "@/actions/subscription-actions";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 interface VIPCardModalProps {
   isOpen: boolean;
@@ -34,6 +35,7 @@ export default function VIPCardModal({
   const [loading, setLoading] = useState(false);
   const [cardLink, setCardLink] = useState("");
   const [copied, setCopied] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     const fetchSubscription = async () => {
@@ -167,9 +169,8 @@ export default function VIPCardModal({
                 <div>
                   <p className="text-sm text-gray-600">الحالة</p>
                   <p
-                    className={`font-semibold ${
-                      isExpired ? "text-red-600" : "text-green-600"
-                    }`}
+                    className={`font-semibold ${isExpired ? "text-red-600" : "text-green-600"
+                      }`}
                   >
                     {isExpired ? "منتهي" : "نشط"}
                   </p>
@@ -203,6 +204,14 @@ export default function VIPCardModal({
                 ) : (
                   <Copy className="h-4 w-4" />
                 )}
+              </Button>
+              <Button
+                onClick={() => router.push(`${cardLink}`)}
+                variant="outline"
+                size="icon"
+                className="shrink-0"
+              >
+                <ExternalLink className="h-4 w-4" />
               </Button>
             </div>
             <p className="text-xs text-gray-500">
