@@ -5,6 +5,7 @@ import "../models/Store";
 import "../models/Place";
 import "../models/Subscription";
 import "../models/Usage";
+import "../models/Favorite";
 
 const MONGODB_URI = process.env.MONGODB_URI!;
 
