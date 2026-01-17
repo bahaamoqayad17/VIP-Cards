@@ -5,6 +5,7 @@ import Subscription from "@/models/Subscription";
 import User from "@/models/User";
 import Store from "@/models/Store";
 import Usage from "@/models/Usage";
+import Favorite from "@/models/Favorite";
 import { PlaceType } from "@/models/Place";
 import { CategoryType } from "@/models/Category";
 
@@ -199,6 +200,75 @@ export async function recordUsage(
     return {
       success: false,
       message: "فشل في تسجيل الاستخدام",
+    };
+  }
+}
+
+export async function getFavorites(userId: string) {
+  await connectToDatabase();
+  try {
+    const favorites = await Favorite.find({ user: userId })
+      .select("store")
+      .lean();
+
+    const favoriteStoreIds = favorites.map(
+      (fav) => String((fav as { store: unknown }).store)
+    );
+
+    return {
+      success: true,
+      message: "تم جلب المفضلة بنجاح",
+      data: favoriteStoreIds,
+    };
+  } catch (error) {
+    console.error(error);
+    return {
+      success: false,
+      message: "فشل في جلب المفضلة",
+      data: [],
+    };
+  }
+}
+
+export async function toggleFavorite(userId: string, storeId: string) {
+  await connectToDatabase();
+  try {
+    const existingFavorite = await Favorite.findOne({
+      user: userId,
+      store: storeId,
+    }).lean();
+
+    if (existingFavorite) {
+      // Remove favorite
+      await Favorite.deleteOne({
+        user: userId,
+        store: storeId,
+      });
+
+      return {
+        success: true,
+        message: "تم إزالة المحل من المفضلة",
+        isFavorite: false,
+      };
+    } else {
+      // Add favorite
+      await Favorite.create({
+        user: userId,
+        store: storeId,
+      });
+
+      return {
+        success: true,
+        message: "تم إضافة المحل إلى المفضلة",
+        isFavorite: true,
+      };
+    }
+  } catch (error) {
+    console.error(error);
+    return {
+      success: false,
+      message: "فشل في تحديث المفضلة",
+      isFavorite: false,
     };
   }
 }
