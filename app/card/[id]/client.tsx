@@ -5,12 +5,21 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, XCircle, Loader2, Clock, Calendar } from "lucide-react";
+import {
+  CheckCircle2,
+  XCircle,
+  Loader2,
+  Clock,
+  Calendar,
+  Heart,
+} from "lucide-react";
 import { toast } from "sonner";
 import {
   getStoresGroupedByPlace,
   checkUsageAllowed,
   recordUsage,
+  getFavorites,
+  toggleFavorite,
 } from "@/actions/card-actions";
 import { UserType } from "@/models/User";
 import { SubscriptionType } from "@/models/Subscription";
@@ -49,6 +58,12 @@ export default function CardClient({ card }: CardClientProps) {
   const [usageStates, setUsageStates] = useState<
     Record<string, { loading: boolean; used: boolean; usedAt: Date | null }>
   >({});
+  const [favoriteStoreIds, setFavoriteStoreIds] = useState<Set<string>>(
+    new Set()
+  );
+  const [favoriteLoading, setFavoriteLoading] = useState<
+    Record<string, boolean>
+  >({});
   const [selectedPlace, setSelectedPlace] = useState<string>("all");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
 
@@ -77,6 +92,8 @@ export default function CardClient({ card }: CardClientProps) {
             setUsageStates(states);
             // Check usage for all stores
             checkAllUsage(response.data);
+            // Fetch favorites
+            fetchFavorites();
           }
         } else {
           toast.error(response.message || "فشل في جلب المحلات");
@@ -92,6 +109,52 @@ export default function CardClient({ card }: CardClientProps) {
     fetchStores();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const fetchFavorites = async () => {
+    if (!card.data) return;
+    try {
+      const userId = String(card.data.user._id);
+      const response = await getFavorites(userId);
+      if (response.success) {
+        setFavoriteStoreIds(new Set(response.data));
+      }
+    } catch (error) {
+      console.error("Error fetching favorites:", error);
+    }
+  };
+
+  const handleToggleFavorite = async (storeId: string) => {
+    if (!card.data) return;
+
+    const userId = String(card.data.user._id);
+
+    // Set loading state
+    setFavoriteLoading((prev) => ({ ...prev, [storeId]: true }));
+
+    try {
+      const response = await toggleFavorite(userId, storeId);
+      if (response.success) {
+        // Update favorites state
+        setFavoriteStoreIds((prev) => {
+          const newSet = new Set(prev);
+          if (response.isFavorite) {
+            newSet.add(storeId);
+          } else {
+            newSet.delete(storeId);
+          }
+          return newSet;
+        });
+        toast.success(response.message);
+      } else {
+        toast.error(response.message || "فشل في تحديث المفضلة");
+      }
+    } catch (error) {
+      console.error("Error toggling favorite:", error);
+      toast.error("حدث خطأ أثناء تحديث المفضلة");
+    } finally {
+      setFavoriteLoading((prev) => ({ ...prev, [storeId]: false }));
+    }
+  };
 
   const checkAllUsage = async (stores: GroupedStore[]) => {
     if (!card.data) return;
@@ -639,10 +702,19 @@ export default function CardClient({ card }: CardClientProps) {
                       return true;
                     });
 
-                    if (filteredStores.length > 0) {
+                    // Sort stores: favorites first, then the rest
+                    const sortedStores = [...filteredStores].sort((a, b) => {
+                      const aIsFavorite = favoriteStoreIds.has(a._id);
+                      const bIsFavorite = favoriteStoreIds.has(b._id);
+                      if (aIsFavorite && !bIsFavorite) return -1;
+                      if (!aIsFavorite && bIsFavorite) return 1;
+                      return 0;
+                    });
+
+                    if (sortedStores.length > 0) {
                       result.push({
                         place: group.place,
-                        stores: filteredStores,
+                        stores: sortedStores,
                       });
                     }
                   });
@@ -674,13 +746,24 @@ export default function CardClient({ card }: CardClientProps) {
                           return (
                             <div
                               key={store._id}
-                              className="border-2 border-yellow-600/20 rounded-lg p-4 space-y-3 bg-gradient-to-br from-gray-800/80 to-gray-900/80 backdrop-blur-sm hover:border-yellow-500/40 transition-all duration-300 shadow-lg hover:shadow-yellow-500/10"
+                              className={`border-2 rounded-lg p-4 space-y-3 bg-gradient-to-br from-gray-800/80 to-gray-900/80 backdrop-blur-sm hover:border-yellow-500/40 transition-all duration-300 shadow-lg hover:shadow-yellow-500/10 ${
+                                favoriteStoreIds.has(store._id)
+                                  ? "border-yellow-500/60 bg-gradient-to-br from-yellow-900/20 to-gray-900/80"
+                                  : "border-yellow-600/20"
+                              }`}
                             >
                               <div className="flex items-start justify-between">
                                 <div className="flex-1">
-                                  <h3 className="font-semibold text-lg text-white mb-2">
-                                    {store.name}
-                                  </h3>
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <h3 className="font-semibold text-lg text-white">
+                                      {store.name}
+                                    </h3>
+                                    {favoriteStoreIds.has(store._id) && (
+                                      <Badge className="bg-gradient-to-r from-yellow-600/40 to-yellow-500/30 text-yellow-300 border border-yellow-500/50 text-xs px-2 py-0.5">
+                                        مفضل
+                                      </Badge>
+                                    )}
+                                  </div>
                                   <div className="flex items-center gap-2 mt-1">
                                     <Badge className="bg-gradient-to-r from-yellow-600/30 to-yellow-500/20 text-yellow-400 border-2 border-yellow-500/40 hover:from-yellow-600/40 hover:to-yellow-500/30 font-bold shadow-md">
                                       {store.category.letter}
@@ -690,6 +773,31 @@ export default function CardClient({ card }: CardClientProps) {
                                     </span>
                                   </div>
                                 </div>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() =>
+                                    handleToggleFavorite(store._id)
+                                  }
+                                  disabled={favoriteLoading[store._id]}
+                                  className={`p-1 h-8 w-8 ${
+                                    favoriteStoreIds.has(store._id)
+                                      ? "text-yellow-400 hover:text-yellow-300"
+                                      : "text-gray-400 hover:text-yellow-400"
+                                  }`}
+                                >
+                                  {favoriteLoading[store._id] ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <Heart
+                                      className={`h-5 w-5 ${
+                                        favoriteStoreIds.has(store._id)
+                                          ? "fill-yellow-400"
+                                          : ""
+                                      }`}
+                                    />
+                                  )}
+                                </Button>
                               </div>
                               <Button
                                 onClick={() => handleUseStore(store._id)}
