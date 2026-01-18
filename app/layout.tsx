@@ -6,8 +6,6 @@ import Sidebar from "@/components/Sidebar";
 import { Toaster } from "@/components/ui/sonner";
 import { usePathname } from "next/navigation";
 
-export const dynamic = "force-dynamic";
-
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],

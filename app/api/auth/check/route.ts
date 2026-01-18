@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { hasRole } from "@/lib/cookie";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   try {
     const isAdmin = await hasRole("admin");

@@ -3,6 +3,8 @@ import Client from "./client";
 import { getCategories } from "@/actions/category-actions";
 import { getStores } from "@/actions/store-action";
 
+export const dynamic = "force-dynamic";
+
 export default async function StoresPage() {
   const stores = await getStores();
   const places = await getPlaces();
