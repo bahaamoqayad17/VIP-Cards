@@ -63,7 +63,7 @@ export async function getStoresGroupedByPlace() {
     const stores = await Store.find({ isActive: true })
       .populate("place")
       .populate("category")
-      .sort({ createdAt: -1 })
+      .sort({ discount: -1 })
       .lean();
 
     // Group stores by place
@@ -75,6 +75,7 @@ export async function getStoresGroupedByPlace() {
           _id: string;
           name: string;
           discount: number;
+          address: string;
           category: CategoryType;
         }>;
       }
@@ -95,6 +96,7 @@ export async function getStoresGroupedByPlace() {
         _id: String((store as { _id: unknown })._id),
         name: (store as { name: string }).name,
         discount: (store as { discount: number }).discount,
+        address: (store as { address?: string }).address || "",
         category: JSON.parse(JSON.stringify(store.category)),
       });
     });

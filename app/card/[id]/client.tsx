@@ -5,6 +5,7 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import {
   CheckCircle2,
   XCircle,
@@ -12,6 +13,7 @@ import {
   Clock,
   Calendar,
   Heart,
+  Search,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -30,6 +32,7 @@ interface StoreWithCategory {
   _id: string;
   name: string;
   discount: number;
+  address: string;
   category: CategoryType;
 }
 
@@ -65,7 +68,7 @@ export default function CardClient({ card }: CardClientProps) {
     Record<string, boolean>
   >({});
   const [selectedPlace, setSelectedPlace] = useState<string>("all");
-  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState<string>("");
 
   useEffect(() => {
     const fetchStores = async () => {
@@ -350,9 +353,8 @@ export default function CardClient({ card }: CardClientProps) {
         <div className="flex items-center gap-2">
           <p className="text-xs text-gray-400">الوقت المتبقي:</p>
           <p
-            className={`text-sm font-bold font-mono ${
-              isExpired ? "text-red-400" : "text-yellow-400"
-            }`}
+            className={`text-sm font-bold font-mono ${isExpired ? "text-red-400" : "text-yellow-400"
+              }`}
           >
             {isExpired ? "منتهي" : timeRemaining || "00:00:00"}
           </p>
@@ -438,9 +440,8 @@ export default function CardClient({ card }: CardClientProps) {
         <div className="flex items-center gap-2">
           <p className="text-xs text-gray-400">الوقت المتبقي:</p>
           <p
-            className={`text-sm font-bold font-mono ${
-              isExpired ? "text-green-400" : "text-yellow-400"
-            }`}
+            className={`text-sm font-bold font-mono ${isExpired ? "text-green-400" : "text-yellow-400"
+              }`}
           >
             {isExpired ? "متاح الآن" : timeRemaining || "00:00:00"}
           </p>
@@ -467,7 +468,7 @@ export default function CardClient({ card }: CardClientProps) {
               <div className="absolute flex items-center justify-center bottom-6 md:bottom-30 left-1/2 transform -translate-x-1/2">
                 <div className="px-8 py-4 rounded-lg shadow-2xl">
                   <p className="text-xs md:text-3xl font-bold text-black text-center drop-shadow-lg">
-                    السيد/ة: {user.name}
+                    {user.name}
                   </p>
                 </div>
               </div>
@@ -555,7 +556,7 @@ export default function CardClient({ card }: CardClientProps) {
                     size="sm"
                     onClick={() => {
                       setSelectedPlace("all");
-                      setSelectedCategory("all");
+                      setSearchQuery("");
                     }}
                     className={
                       selectedPlace === "all"
@@ -581,7 +582,7 @@ export default function CardClient({ card }: CardClientProps) {
                       size="sm"
                       onClick={() => {
                         setSelectedPlace(place.id);
-                        setSelectedCategory("all");
+                        setSearchQuery("");
                       }}
                       className={
                         selectedPlace === place.id
@@ -595,90 +596,27 @@ export default function CardClient({ card }: CardClientProps) {
                 </div>
               </div>
 
-              {/* Category Filter - Always visible */}
+              {/* Search Bar */}
               <div className="mt-4">
                 <p className="text-sm text-yellow-400 mb-3 font-semibold">
-                  فلترة حسب الفئة:
+                  البحث في المحلات:
                 </p>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    variant={selectedCategory === "all" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setSelectedCategory("all")}
-                    className={
-                      selectedCategory === "all"
-                        ? "bg-gradient-to-r from-yellow-600 to-yellow-500 text-black border-yellow-500/50 hover:from-yellow-500 hover:to-yellow-400 shadow-lg shadow-yellow-500/30 font-bold"
-                        : "bg-gray-800/80 text-gray-300 border-gray-600/50 hover:bg-gray-700/80 hover:border-yellow-600/30"
-                    }
-                  >
-                    الكل
-                  </Button>
-                  {(() => {
-                    // Get categories based on selected place
-                    let categoriesToShow: Array<{
-                      id: string;
-                      name: string;
-                      letter: string;
-                    }> = [];
-
-                    if (selectedPlace === "all") {
-                      // Show all categories from all places
-                      categoriesToShow = Array.from(
-                        new Set(
-                          groupedStores.flatMap((g) =>
-                            g.stores.map((s) => ({
-                              id: String(s.category._id),
-                              name: s.category.name,
-                              letter: s.category.letter,
-                            }))
-                          )
-                        )
-                      );
-                    } else {
-                      // Show only categories from selected place
-                      const selectedPlaceGroup = groupedStores.find(
-                        (g) => String(g.place._id) === selectedPlace
-                      );
-                      if (selectedPlaceGroup) {
-                        categoriesToShow = Array.from(
-                          new Set(
-                            selectedPlaceGroup.stores.map((s) => ({
-                              id: String(s.category._id),
-                              name: s.category.name,
-                              letter: s.category.letter,
-                            }))
-                          )
-                        );
-                      }
-                    }
-
-                    return categoriesToShow.map((category) => (
-                      <Button
-                        key={category.id}
-                        variant={
-                          selectedCategory === category.id
-                            ? "default"
-                            : "outline"
-                        }
-                        size="sm"
-                        onClick={() => setSelectedCategory(category.id)}
-                        className={
-                          selectedCategory === category.id
-                            ? "bg-gradient-to-r from-yellow-600 to-yellow-500 text-black border-yellow-500/50 hover:from-yellow-500 hover:to-yellow-400 shadow-lg shadow-yellow-500/30 font-bold"
-                            : "bg-gray-800/80 text-gray-300 border-gray-600/50 hover:bg-gray-700/80 hover:border-yellow-600/30"
-                        }
-                      >
-                        {category.letter} - {category.name}
-                      </Button>
-                    ));
-                  })()}
+                <div className="relative">
+                  <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <Input
+                    type="text"
+                    placeholder="ابحث عن محل بالاسم أو العنوان..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pr-10 bg-gray-800/80 text-white border-gray-600/50 focus:border-yellow-600/50 focus:ring-yellow-600/20"
+                  />
                 </div>
               </div>
             </CardHeader>
             <CardContent className="pt-6">
               <div className="space-y-6">
                 {(() => {
-                  // Filter stores based on selected place and category
+                  // Filter stores based on selected place and search query
                   let filteredGroups = groupedStores;
 
                   // Filter by place
@@ -688,7 +626,7 @@ export default function CardClient({ card }: CardClientProps) {
                     );
                   }
 
-                  // Filter by category and group by place
+                  // Filter by search query and group by place
                   const result: Array<{
                     place: PlaceType;
                     stores: StoreWithCategory[];
@@ -696,8 +634,12 @@ export default function CardClient({ card }: CardClientProps) {
 
                   filteredGroups.forEach((group) => {
                     const filteredStores = group.stores.filter((store) => {
-                      if (selectedCategory !== "all") {
-                        return String(store.category._id) === selectedCategory;
+                      if (searchQuery.trim()) {
+                        const query = searchQuery.toLowerCase().trim();
+                        return (
+                          store.name.toLowerCase().includes(query) ||
+                          store.address.toLowerCase().includes(query)
+                        );
                       }
                       return true;
                     });
@@ -746,11 +688,10 @@ export default function CardClient({ card }: CardClientProps) {
                           return (
                             <div
                               key={store._id}
-                              className={`border-2 rounded-lg p-4 space-y-3 bg-gradient-to-br from-gray-800/80 to-gray-900/80 backdrop-blur-sm hover:border-yellow-500/40 transition-all duration-300 shadow-lg hover:shadow-yellow-500/10 ${
-                                favoriteStoreIds.has(store._id)
-                                  ? "border-yellow-500/60 bg-gradient-to-br from-yellow-900/20 to-gray-900/80"
-                                  : "border-yellow-600/20"
-                              }`}
+                              className={`border-2 rounded-lg p-4 space-y-3 bg-gradient-to-br from-gray-800/80 to-gray-900/80 backdrop-blur-sm hover:border-yellow-500/40 transition-all duration-300 shadow-lg hover:shadow-yellow-500/10 ${favoriteStoreIds.has(store._id)
+                                ? "border-yellow-500/60 bg-gradient-to-br from-yellow-900/20 to-gray-900/80"
+                                : "border-yellow-600/20"
+                                }`}
                             >
                               <div className="flex items-start justify-between">
                                 <div className="flex-1">
@@ -764,7 +705,7 @@ export default function CardClient({ card }: CardClientProps) {
                                       </Badge>
                                     )}
                                   </div>
-                                  <div className="flex items-center gap-2 mt-1">
+                                  <div className="flex items-center gap-2 mt-1 mb-2">
                                     <Badge className="bg-gradient-to-r from-yellow-600/30 to-yellow-500/20 text-yellow-400 border-2 border-yellow-500/40 hover:from-yellow-600/40 hover:to-yellow-500/30 font-bold shadow-md">
                                       {store.category.letter}
                                     </Badge>
@@ -772,6 +713,12 @@ export default function CardClient({ card }: CardClientProps) {
                                       خصم {store.discount}%
                                     </span>
                                   </div>
+                                  {store.address && (
+                                    <div className="mt-2">
+                                      <p className="text-xs text-gray-400 mb-1">العنوان:</p>
+                                      <p className="text-sm text-gray-300">{store.address}</p>
+                                    </div>
+                                  )}
                                 </div>
                                 <Button
                                   variant="ghost"
@@ -780,21 +727,19 @@ export default function CardClient({ card }: CardClientProps) {
                                     handleToggleFavorite(store._id)
                                   }
                                   disabled={favoriteLoading[store._id]}
-                                  className={`p-1 h-8 w-8 ${
-                                    favoriteStoreIds.has(store._id)
-                                      ? "text-yellow-400 hover:text-yellow-300"
-                                      : "text-gray-400 hover:text-yellow-400"
-                                  }`}
+                                  className={`p-1 h-8 w-8 ${favoriteStoreIds.has(store._id)
+                                    ? "text-yellow-400 hover:text-yellow-300"
+                                    : "text-gray-400 hover:text-yellow-400"
+                                    }`}
                                 >
                                   {favoriteLoading[store._id] ? (
                                     <Loader2 className="h-4 w-4 animate-spin" />
                                   ) : (
                                     <Heart
-                                      className={`h-5 w-5 ${
-                                        favoriteStoreIds.has(store._id)
-                                          ? "fill-yellow-400"
-                                          : ""
-                                      }`}
+                                      className={`h-5 w-5 ${favoriteStoreIds.has(store._id)
+                                        ? "fill-yellow-400"
+                                        : ""
+                                        }`}
                                     />
                                   )}
                                 </Button>
@@ -802,13 +747,12 @@ export default function CardClient({ card }: CardClientProps) {
                               <Button
                                 onClick={() => handleUseStore(store._id)}
                                 disabled={!canUse || storeState.loading}
-                                className={`w-full font-bold transition-all duration-300 ${
-                                  storeState.used
-                                    ? "bg-gray-800/80 text-gray-500 border-2 border-gray-700 cursor-not-allowed"
-                                    : canUse
+                                className={`w-full font-bold transition-all duration-300 ${storeState.used
+                                  ? "bg-gray-800/80 text-gray-500 border-2 border-gray-700 cursor-not-allowed"
+                                  : canUse
                                     ? "bg-gradient-to-r from-yellow-600 to-yellow-500 text-black hover:from-yellow-500 hover:to-yellow-400 shadow-xl shadow-yellow-500/40 hover:shadow-yellow-500/60 border-2 border-yellow-500/50"
                                     : "bg-gray-800/80 text-gray-500 border-2 border-gray-700 cursor-not-allowed"
-                                }`}
+                                  }`}
                                 variant={
                                   storeState.used ? "secondary" : "default"
                                 }
