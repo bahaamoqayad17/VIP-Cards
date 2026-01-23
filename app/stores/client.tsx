@@ -55,6 +55,7 @@ export default function StoresClient({
     place: string;
     category: string;
     discount: number;
+    address: string;
   }): Promise<{ success: boolean; message: string }> => {
     setLoading(true);
     try {

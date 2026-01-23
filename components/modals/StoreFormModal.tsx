@@ -32,6 +32,7 @@ interface StoreFormModalProps {
     place: string;
     category: string;
     discount: number;
+    address: string;
   }) => Promise<{
     success: boolean;
     message: string;
@@ -63,12 +64,14 @@ export default function StoreFormModal({
     place: string;
     category: string;
     discount: number;
+    address: string;
   }>({
     defaultValues: {
       name: "",
       place: "",
       category: "",
       discount: 0,
+      address: ""
     },
   });
 
@@ -78,6 +81,7 @@ export default function StoreFormModal({
   useEffect(() => {
     if (editingStore) {
       setValue("name", editingStore.name);
+      setValue("address", editingStore.address || "");
       setValue(
         "place",
         typeof editingStore.place === "object"
@@ -97,6 +101,7 @@ export default function StoreFormModal({
         place: "",
         category: "",
         discount: 0,
+        address: "",
       });
     }
   }, [editingStore, setValue, reset]);
@@ -106,6 +111,7 @@ export default function StoreFormModal({
     place: string;
     category: string;
     discount: number;
+    address: string;
   }) => {
     const result = await onSubmit(data);
     if (result.success) {
@@ -240,6 +246,25 @@ export default function StoreFormModal({
                 </p>
               )}
             </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="address">العنوان</Label>
+              <Input
+                id="address"
+                {...register("address", {
+                  required: "العنوان مطلوب",
+                  minLength: {
+                    value: 3,
+                    message: "يجب أن يكون العنوان على الأقل 3 أحرف",
+                  },
+                })}
+                placeholder="أدخل عنوان المحل"
+                className={errors.address ? "border-destructive" : ""}
+              />
+              {errors.address && (
+                <p className="text-sm text-destructive">{errors.address.message}</p>
+              )}
+            </div>
           </div>
           <DialogFooter>
             <Button
@@ -254,8 +279,8 @@ export default function StoreFormModal({
               {isLoading
                 ? "جاري الحفظ..."
                 : editingStore
-                ? "تحديث"
-                : "إضافة"}
+                  ? "تحديث"
+                  : "إضافة"}
             </Button>
           </DialogFooter>
         </form>

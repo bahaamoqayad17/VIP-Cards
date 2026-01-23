@@ -32,10 +32,11 @@ export async function createStore(data: {
   place: string;
   category: string;
   discount: number;
+  address: string;
 }) {
   await connectToDatabase();
   try {
-    const { name, place, category, discount } = data;
+    const { name, place, category, discount, address } = data;
 
     if (!name || name.trim().length === 0) {
       return {
@@ -50,6 +51,7 @@ export async function createStore(data: {
       place: place.trim(),
       category: category.trim(),
       discount: discount,
+      address: address.trim(),
     });
     return {
       success: true,
@@ -81,11 +83,11 @@ export async function createStore(data: {
 
 export async function updateStore(
   id: string,
-  data: { name: string; place: string; category: string; discount: number }
+  data: { name: string; place: string; category: string; discount: number; address: string }
 ) {
   await connectToDatabase();
   try {
-    const { name, place, category, discount } = data;
+    const { name, place, category, discount, address } = data;
 
     if (!name || name.trim().length === 0) {
       return {
@@ -101,6 +103,7 @@ export async function updateStore(
         place: place.trim(),
         category: category.trim(),
         discount: discount,
+        address: address.trim(),
       },
       { new: true, lean: true }
     );

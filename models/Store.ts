@@ -6,6 +6,7 @@ const storeSchema = new mongoose.Schema(
     place: { type: mongoose.Schema.Types.ObjectId, ref: "Place" },
     category: { type: mongoose.Schema.Types.ObjectId, ref: "Category" },
     discount: { type: Number },
+    address: { type: String },
     isActive: { type: Boolean, default: true },
   },
   { timestamps: true }
@@ -17,6 +18,7 @@ export type StoreType = Omit<InferSchemaType<typeof storeSchema>, ""> & {
   place: mongoose.Types.ObjectId | string;
   category: mongoose.Types.ObjectId | string;
   discount: number;
+  address: string;
   isActive: boolean;
 };
 
