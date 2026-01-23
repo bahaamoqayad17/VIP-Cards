@@ -114,7 +114,7 @@ export default function VIPCardModal({
             <div className="absolute bottom-11 left-0 right-0 flex items-center justify-center">
               <div className="px-6 py-3 rounded-lg shadow-lg">
                 <p className="text-md font-bold text-gray-900">
-                  السيد/ة: {user.name}
+                  {user.name}
                 </p>
               </div>
             </div>
