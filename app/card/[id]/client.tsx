@@ -14,6 +14,10 @@ import {
   Calendar,
   Heart,
   Search,
+  User,
+  Mail,
+  Phone,
+  CreditCard,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -53,6 +57,190 @@ interface CardClientProps {
     message: string;
     data: CardData | null;
   };
+}
+
+function formatDate(date: Date | string | undefined) {
+  if (!date) return "-";
+  return new Date(date).toLocaleDateString("ar-SA", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+}
+
+function SubscriptionCountdown({
+  expiresAt,
+}: {
+  expiresAt: Date | string | undefined;
+}) {
+  const [timeRemaining, setTimeRemaining] = useState<string>("");
+  const [isExpired, setIsExpired] = useState(false);
+  const expiresAtKey =
+    expiresAt == null
+      ? null
+      : typeof expiresAt === "string"
+        ? expiresAt
+        : (expiresAt as Date).getTime();
+
+  useEffect(() => {
+    if (!expiresAt) return;
+
+    const updateTimer = () => {
+      const now = new Date();
+      const expiry = new Date(expiresAt);
+
+      const diff = expiry.getTime() - now.getTime();
+
+      if (diff <= 0) {
+        setTimeRemaining("00:00:00");
+        setIsExpired(true);
+        return;
+      }
+
+      setIsExpired(false);
+
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor(
+        (diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
+      );
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+      if (days > 0) {
+        setTimeRemaining(
+          `${days} يوم ${hours.toString().padStart(2, "0")}:${minutes
+            .toString()
+            .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`
+        );
+      } else {
+        setTimeRemaining(
+          `${hours.toString().padStart(2, "0")}:${minutes
+            .toString()
+            .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`
+        );
+      }
+    };
+
+    const t = setTimeout(updateTimer, 0);
+    const interval = setInterval(updateTimer, 1000);
+
+    return () => {
+      clearTimeout(t);
+      clearInterval(interval);
+    };
+    // expiresAtKey is a primitive to avoid effect loops from object reference changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expiresAtKey]);
+
+  if (!expiresAt) return null;
+
+  return (
+    <div className="p-4 rounded-lg bg-gradient-to-br from-yellow-600/10 to-yellow-500/5 border-2 border-yellow-600/30">
+      <div className="flex items-center gap-2 mb-2">
+        <Calendar className="h-4 w-4 text-yellow-400" />
+        <p className="text-xs text-gray-400">تاريخ الانتهاء:</p>
+        <p className="text-xs font-semibold text-yellow-400">
+          {formatDate(expiresAt)}
+        </p>
+      </div>
+      <div className="flex items-center gap-2">
+        <p className="text-xs text-gray-400">الوقت المتبقي:</p>
+        <p
+          className={`text-sm font-bold font-mono ${isExpired ? "text-red-400" : "text-yellow-400"
+            }`}
+        >
+          {isExpired ? "منتهي" : timeRemaining || "00:00:00"}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function CountdownTimer({ usedAt }: { usedAt: Date | null }) {
+  const [timeRemaining, setTimeRemaining] = useState<string>("");
+  const [isExpired, setIsExpired] = useState(false);
+  const usedAtKey = usedAt?.getTime() ?? null;
+
+  useEffect(() => {
+    if (!usedAt) return;
+
+    const updateTimer = () => {
+      const now = new Date();
+      const used = new Date(usedAt);
+
+      const nextAvailableTime = new Date(used);
+      nextAvailableTime.setHours(nextAvailableTime.getHours() + 24);
+
+      const diff = nextAvailableTime.getTime() - now.getTime();
+
+      if (diff <= 0) {
+        setTimeRemaining("00:00:00");
+        setIsExpired(true);
+        return;
+      }
+
+      setIsExpired(false);
+
+      const hours = Math.floor(diff / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+      setTimeRemaining(
+        `${hours.toString().padStart(2, "0")}:${minutes
+          .toString()
+          .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`
+      );
+    };
+
+    const t = setTimeout(updateTimer, 0);
+    const interval = setInterval(updateTimer, 1000);
+
+    return () => {
+      clearTimeout(t);
+      clearInterval(interval);
+    };
+    // usedAtKey is a primitive to avoid effect loops from Date reference changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [usedAtKey]);
+
+  if (!usedAt) return null;
+
+  const usedTime = new Date(usedAt).toLocaleTimeString("ar-SA", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  const nextAvailableTime = new Date(usedAt);
+  nextAvailableTime.setHours(nextAvailableTime.getHours() + 24);
+  const nextAvailableTimeStr = nextAvailableTime.toLocaleTimeString("ar-SA", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  return (
+    <div className="mt-3 p-3 rounded-lg bg-gray-800/50 border border-yellow-600/20">
+      <div className="flex items-center gap-2 mb-2">
+        <Clock className="h-4 w-4 text-yellow-400" />
+        <p className="text-xs text-gray-400">تم الاستخدام في:</p>
+        <p className="text-xs font-semibold text-yellow-400">{usedTime}</p>
+      </div>
+      <div className="flex items-center gap-2 mb-2">
+        <p className="text-xs text-gray-400">يمكن الاستخدام مرة أخرى في:</p>
+        <p className="text-xs font-semibold text-yellow-400">
+          {nextAvailableTimeStr}
+        </p>
+      </div>
+      <div className="flex items-center gap-2">
+        <p className="text-xs text-gray-400">الوقت المتبقي:</p>
+        <p
+          className={`text-sm font-bold font-mono ${isExpired ? "text-green-400" : "text-yellow-400"
+            }`}
+        >
+          {isExpired ? "متاح الآن" : timeRemaining || "00:00:00"}
+        </p>
+      </div>
+    </div>
+  );
 }
 
 export default function CardClient({ card }: CardClientProps) {
@@ -165,7 +353,7 @@ export default function CardClient({ card }: CardClientProps) {
     const userId = String(card.data.user._id);
     const subscriptionId = String(card.data.subscription._id);
 
-    // Check usage for each store
+    // Check usage for each store in parallel, then apply a single batch update
     const checks = stores.flatMap((group) =>
       group.stores.map(async (store) => {
         const response = await checkUsageAllowed(
@@ -173,20 +361,25 @@ export default function CardClient({ card }: CardClientProps) {
           subscriptionId,
           store._id
         );
-        if (response.success) {
-          setUsageStates((prev) => ({
-            ...prev,
-            [store._id]: {
-              loading: false,
-              used: !response.allowed,
-              usedAt: response.usedAt ? new Date(response.usedAt) : null,
-            },
-          }));
-        }
+        return { storeId: store._id, response };
       })
     );
 
-    await Promise.all(checks);
+    const results = await Promise.all(checks);
+    const updates: Record<
+      string,
+      { loading: boolean; used: boolean; usedAt: Date | null }
+    > = {};
+    for (const { storeId, response } of results) {
+      if (response.success) {
+        updates[storeId] = {
+          loading: false,
+          used: !response.allowed,
+          usedAt: response.usedAt ? new Date(response.usedAt) : null,
+        };
+      }
+    }
+    setUsageStates((prev) => ({ ...prev, ...updates }));
   };
 
   const handleUseStore = async (storeId: string) => {
@@ -272,184 +465,6 @@ export default function CardClient({ card }: CardClientProps) {
 
   const { user, subscription, isExpired } = card.data;
 
-  const formatDate = (date: Date | string | undefined) => {
-    if (!date) return "-";
-    return new Date(date).toLocaleDateString("ar-SA", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  };
-
-  // Subscription Countdown Timer Component
-  const SubscriptionCountdown = ({
-    expiresAt,
-  }: {
-    expiresAt: Date | string | undefined;
-  }) => {
-    const [timeRemaining, setTimeRemaining] = useState<string>("");
-    const [isExpired, setIsExpired] = useState(false);
-
-    useEffect(() => {
-      if (!expiresAt) {
-        setTimeRemaining("");
-        setIsExpired(true);
-        return;
-      }
-
-      const updateTimer = () => {
-        const now = new Date();
-        const expiry = new Date(expiresAt);
-
-        const diff = expiry.getTime() - now.getTime();
-
-        if (diff <= 0) {
-          setTimeRemaining("00:00:00");
-          setIsExpired(true);
-          return;
-        }
-
-        setIsExpired(false);
-
-        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-        const hours = Math.floor(
-          (diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
-        );
-        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-
-        if (days > 0) {
-          setTimeRemaining(
-            `${days} يوم ${hours.toString().padStart(2, "0")}:${minutes
-              .toString()
-              .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`
-          );
-        } else {
-          setTimeRemaining(
-            `${hours.toString().padStart(2, "0")}:${minutes
-              .toString()
-              .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`
-          );
-        }
-      };
-
-      updateTimer();
-      const interval = setInterval(updateTimer, 1000);
-
-      return () => clearInterval(interval);
-    }, [expiresAt]);
-
-    if (!expiresAt) return null;
-
-    return (
-      <div className="p-4 rounded-lg bg-gradient-to-br from-yellow-600/10 to-yellow-500/5 border-2 border-yellow-600/30">
-        <div className="flex items-center gap-2 mb-2">
-          <Calendar className="h-4 w-4 text-yellow-400" />
-          <p className="text-xs text-gray-400">تاريخ الانتهاء:</p>
-          <p className="text-xs font-semibold text-yellow-400">
-            {formatDate(expiresAt)}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <p className="text-xs text-gray-400">الوقت المتبقي:</p>
-          <p
-            className={`text-sm font-bold font-mono ${isExpired ? "text-red-400" : "text-yellow-400"
-              }`}
-          >
-            {isExpired ? "منتهي" : timeRemaining || "00:00:00"}
-          </p>
-        </div>
-      </div>
-    );
-  };
-
-  // Countdown Timer Component - 24 hours from usage time
-  const CountdownTimer = ({ usedAt }: { usedAt: Date | null }) => {
-    const [timeRemaining, setTimeRemaining] = useState<string>("");
-    const [isExpired, setIsExpired] = useState(false);
-
-    useEffect(() => {
-      if (!usedAt) {
-        setTimeRemaining("");
-        setIsExpired(false);
-        return;
-      }
-
-      const updateTimer = () => {
-        const now = new Date();
-        const used = new Date(usedAt);
-
-        // Calculate 24 hours from the usage time
-        const nextAvailableTime = new Date(used);
-        nextAvailableTime.setHours(nextAvailableTime.getHours() + 24);
-
-        const diff = nextAvailableTime.getTime() - now.getTime();
-
-        if (diff <= 0) {
-          setTimeRemaining("00:00:00");
-          setIsExpired(true);
-          return;
-        }
-
-        setIsExpired(false);
-
-        const hours = Math.floor(diff / (1000 * 60 * 60));
-        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-
-        setTimeRemaining(
-          `${hours.toString().padStart(2, "0")}:${minutes
-            .toString()
-            .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`
-        );
-      };
-
-      updateTimer();
-      const interval = setInterval(updateTimer, 1000);
-
-      return () => clearInterval(interval);
-    }, [usedAt]);
-
-    if (!usedAt) return null;
-
-    const usedTime = new Date(usedAt).toLocaleTimeString("ar-SA", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-
-    const nextAvailableTime = new Date(usedAt);
-    nextAvailableTime.setHours(nextAvailableTime.getHours() + 24);
-    const nextAvailableTimeStr = nextAvailableTime.toLocaleTimeString("ar-SA", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-
-    return (
-      <div className="mt-3 p-3 rounded-lg bg-gray-800/50 border border-yellow-600/20">
-        <div className="flex items-center gap-2 mb-2">
-          <Clock className="h-4 w-4 text-yellow-400" />
-          <p className="text-xs text-gray-400">تم الاستخدام في:</p>
-          <p className="text-xs font-semibold text-yellow-400">{usedTime}</p>
-        </div>
-        <div className="flex items-center gap-2 mb-2">
-          <p className="text-xs text-gray-400">يمكن الاستخدام مرة أخرى في:</p>
-          <p className="text-xs font-semibold text-yellow-400">
-            {nextAvailableTimeStr}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <p className="text-xs text-gray-400">الوقت المتبقي:</p>
-          <p
-            className={`text-sm font-bold font-mono ${isExpired ? "text-green-400" : "text-yellow-400"
-              }`}
-          >
-            {isExpired ? "متاح الآن" : timeRemaining || "00:00:00"}
-          </p>
-        </div>
-      </div>
-    );
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 p-4">
       <div className="max-w-6xl mx-auto space-y-6">
@@ -464,61 +479,71 @@ export default function CardClient({ card }: CardClientProps) {
                 className="object-contain"
                 priority
               />
-              {/* User name overlay */}
-              <div className="absolute flex items-center justify-center bottom-6 md:bottom-30 left-1/2 transform -translate-x-1/2">
-                <div className="px-8 py-4 rounded-lg shadow-2xl">
-                  <p className="text-xs md:text-3xl font-bold text-black text-center drop-shadow-lg">
-                    {user.name}
-                  </p>
-                </div>
-              </div>
             </div>
+
+
           </CardContent>
         </Card>
 
-        {/* Subscription Status */}
-        <Card className="border-4 border-yellow-600/40 bg-gradient-to-br from-black via-gray-900 to-black shadow-2xl shadow-yellow-500/20 backdrop-blur-sm">
-          <CardHeader className="border-b-2 border-yellow-600/30 bg-gradient-to-r from-yellow-600/10 to-transparent">
-            <CardTitle className="flex items-center gap-3 text-yellow-400 text-xl">
-              {isExpired ? (
-                <>
-                  <XCircle className="h-6 w-6 text-red-400 drop-shadow-[0_0_8px_rgba(239,68,68,0.6)]" />
-                  <span className="text-red-400 font-bold">الاشتراك منتهي</span>
-                </>
-              ) : (
-                <>
-                  <CheckCircle2 className="h-6 w-6 text-yellow-400 drop-shadow-[0_0_8px_rgba(255,215,0,0.6)]" />
-                  <span className="text-yellow-400 font-bold">
-                    الاشتراك نشط
-                  </span>
-                </>
-              )}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="bg-gradient-to-br from-gray-900/80 to-black/80">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-              <div className="p-5 rounded-lg bg-gradient-to-br from-yellow-600/10 to-yellow-500/5 border-2 border-yellow-600/30 shadow-lg">
-                <p className="text-sm text-gray-300 mb-2 font-medium">
-                  تاريخ البدء
-                </p>
-                <p className="font-bold text-yellow-400 text-lg">
-                  {formatDate(subscription.startDate)}
-                </p>
+
+
+        {/* User Details */}
+        <div className="p-5 md:p-6 bg-gradient-to-br from-gray-900/95 via-gray-800/90 to-black border-t-2 border-yellow-600/30">
+          <h3 className="text-sm font-semibold text-yellow-400/90 mb-4 flex items-center gap-2">
+            <User className="h-4 w-4" />
+            بيانات العضو
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-800/60 border border-yellow-600/20 hover:border-yellow-600/40 transition-colors">
+              <div className="flex-shrink-0 p-2 rounded-lg bg-yellow-600/20">
+                <User className="h-4 w-4 text-yellow-400" />
               </div>
-              <div className="p-5 rounded-lg bg-gradient-to-br from-yellow-600/10 to-yellow-500/5 border-2 border-yellow-600/30 shadow-lg">
-                <p className="text-sm text-gray-300 mb-2 font-medium">
-                  تاريخ الانتهاء
-                </p>
-                <p className="font-bold text-yellow-400 text-lg">
-                  {formatDate(subscription.expiresAt)}
-                </p>
+              <div className="min-w-0">
+                <p className="text-xs text-gray-500 mb-0.5">الاسم</p>
+                <p className="text-sm font-semibold text-white truncate">{user.name}</p>
               </div>
-              {!isExpired && (
-                <SubscriptionCountdown expiresAt={subscription.expiresAt} />
-              )}
             </div>
-          </CardContent>
-        </Card>
+            {user.email && (
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-800/60 border border-yellow-600/20 hover:border-yellow-600/40 transition-colors">
+                <div className="flex-shrink-0 p-2 rounded-lg bg-yellow-600/20">
+                  <Mail className="h-4 w-4 text-yellow-400" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs text-gray-500 mb-0.5">البريد الإلكتروني</p>
+                  <p className="text-sm font-semibold text-white truncate">{user.email}</p>
+                </div>
+              </div>
+            )}
+            {user.mobile_number && (
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-800/60 border border-yellow-600/20 hover:border-yellow-600/40 transition-colors">
+                <div className="flex-shrink-0 p-2 rounded-lg bg-yellow-600/20">
+                  <Phone className="h-4 w-4 text-yellow-400" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs text-gray-500 mb-0.5">رقم الجوال</p>
+                  <p className="text-sm font-semibold text-white truncate" dir="ltr">{user.mobile_number}</p>
+                </div>
+              </div>
+            )}
+            {user.id_number && (
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-800/60 border border-yellow-600/20 hover:border-yellow-600/40 transition-colors">
+                <div className="flex-shrink-0 p-2 rounded-lg bg-yellow-600/20">
+                  <CreditCard className="h-4 w-4 text-yellow-400" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs text-gray-500 mb-0.5">رقم الهوية</p>
+                  <p className="text-sm font-semibold text-white truncate" dir="ltr">{user.id_number}</p>
+                </div>
+              </div>
+            )}
+          </div>
+          {(user.email || user.mobile_number || user.id_number) && (
+            <p className="text-xs text-gray-500 mt-3 text-center">
+              تُعرض فقط البيانات المسجلة في حسابك
+            </p>
+          )}
+        </div>
+
 
         {/* Stores by Place */}
         {loading ? (
@@ -793,6 +818,51 @@ export default function CardClient({ card }: CardClientProps) {
             </CardContent>
           </Card>
         )}
+
+        {/* Subscription Status */}
+        <Card className="border-4 border-yellow-600/40 bg-gradient-to-br from-black via-gray-900 to-black shadow-2xl shadow-yellow-500/20 backdrop-blur-sm">
+          <CardHeader className="border-b-2 border-yellow-600/30 bg-gradient-to-r from-yellow-600/10 to-transparent">
+            <CardTitle className="flex items-center gap-3 text-yellow-400 text-xl">
+              {isExpired ? (
+                <>
+                  <XCircle className="h-6 w-6 text-red-400 drop-shadow-[0_0_8px_rgba(239,68,68,0.6)]" />
+                  <span className="text-red-400 font-bold">الاشتراك منتهي</span>
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="h-6 w-6 text-yellow-400 drop-shadow-[0_0_8px_rgba(255,215,0,0.6)]" />
+                  <span className="text-yellow-400 font-bold">
+                    الاشتراك نشط
+                  </span>
+                </>
+              )}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="bg-gradient-to-br from-gray-900/80 to-black/80">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+              <div className="p-5 rounded-lg bg-gradient-to-br from-yellow-600/10 to-yellow-500/5 border-2 border-yellow-600/30 shadow-lg">
+                <p className="text-sm text-gray-300 mb-2 font-medium">
+                  تاريخ البدء
+                </p>
+                <p className="font-bold text-yellow-400 text-lg">
+                  {formatDate(subscription.startDate)}
+                </p>
+              </div>
+              <div className="p-5 rounded-lg bg-gradient-to-br from-yellow-600/10 to-yellow-500/5 border-2 border-yellow-600/30 shadow-lg">
+                <p className="text-sm text-gray-300 mb-2 font-medium">
+                  تاريخ الانتهاء
+                </p>
+                <p className="font-bold text-yellow-400 text-lg">
+                  {formatDate(subscription.expiresAt)}
+                </p>
+              </div>
+              {!isExpired && (
+                <SubscriptionCountdown expiresAt={subscription.expiresAt} />
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
       </div>
     </div>
   );
