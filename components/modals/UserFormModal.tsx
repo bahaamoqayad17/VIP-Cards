@@ -127,6 +127,7 @@ export default function UserFormModal({
                   required: "رقم الهاتف مطلوب",
                 })}
                 placeholder="أدخل رقم الهاتف"
+                dir="rtl"
                 className={errors.mobile_number ? "border-destructive" : ""}
               />
               {errors.mobile_number && (
@@ -164,8 +165,8 @@ export default function UserFormModal({
               {isLoading
                 ? "جاري الحفظ..."
                 : editingUser
-                ? "تحديث"
-                : "إضافة"}
+                  ? "تحديث"
+                  : "إضافة"}
             </Button>
           </DialogFooter>
         </form>
