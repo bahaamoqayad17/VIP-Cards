@@ -1,32 +1,33 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
-  CheckCircle2,
-  XCircle,
-  Loader2,
-  Clock,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Calendar,
+  CheckCircle2,
+  Clock,
+  CreditCard,
   Heart,
-  Search,
-  User,
   Mail,
   Phone,
-  CreditCard,
+  Search,
+  User,
+  XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
-import {
-  getStoresGroupedByPlace,
-  checkUsageAllowed,
-  recordUsage,
-  getFavorites,
-  toggleFavorite,
-} from "@/actions/card-actions";
+import { recordUsage, toggleFavorite } from "@/actions/card-actions";
 import { UserType } from "@/models/User";
 import { SubscriptionType } from "@/models/Subscription";
 import { PlaceType } from "@/models/Place";
@@ -51,16 +52,28 @@ interface CardData {
   isExpired: boolean;
 }
 
+interface UsageState {
+  loading: boolean;
+  used: boolean;
+  usedAt: Date | null;
+}
+
 interface CardClientProps {
   card: {
     success: boolean;
     message: string;
     data: CardData | null;
   };
+  initialGroupedStores: GroupedStore[];
+  initialFavoriteStoreIds: string[];
+  initialUsageStates: Record<string, UsageState>;
 }
+
+const RENEWAL_PHONE_NUMBER = "+972567681022";
 
 function formatDate(date: Date | string | undefined) {
   if (!date) return "-";
+
   return new Date(date).toLocaleDateString("ar-SA", {
     year: "numeric",
     month: "long",
@@ -80,7 +93,7 @@ function SubscriptionCountdown({
       ? null
       : typeof expiresAt === "string"
         ? expiresAt
-        : (expiresAt as Date).getTime();
+        : expiresAt.getTime();
 
   useEffect(() => {
     if (!expiresAt) return;
@@ -88,7 +101,6 @@ function SubscriptionCountdown({
     const updateTimer = () => {
       const now = new Date();
       const expiry = new Date(expiresAt);
-
       const diff = expiry.getTime() - now.getTime();
 
       if (diff <= 0) {
@@ -101,7 +113,7 @@ function SubscriptionCountdown({
 
       const days = Math.floor(diff / (1000 * 60 * 60 * 24));
       const hours = Math.floor(
-        (diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
+        (diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60),
       );
       const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
       const seconds = Math.floor((diff % (1000 * 60)) / 1000);
@@ -110,33 +122,32 @@ function SubscriptionCountdown({
         setTimeRemaining(
           `${days} يوم ${hours.toString().padStart(2, "0")}:${minutes
             .toString()
-            .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`
+            .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`,
         );
-      } else {
-        setTimeRemaining(
-          `${hours.toString().padStart(2, "0")}:${minutes
-            .toString()
-            .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`
-        );
+        return;
       }
+
+      setTimeRemaining(
+        `${hours.toString().padStart(2, "0")}:${minutes
+          .toString()
+          .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`,
+      );
     };
 
-    const t = setTimeout(updateTimer, 0);
+    const timeout = setTimeout(updateTimer, 0);
     const interval = setInterval(updateTimer, 1000);
 
     return () => {
-      clearTimeout(t);
+      clearTimeout(timeout);
       clearInterval(interval);
     };
-    // expiresAtKey is a primitive to avoid effect loops from object reference changes
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [expiresAtKey]);
+  }, [expiresAt, expiresAtKey]);
 
   if (!expiresAt) return null;
 
   return (
-    <div className="p-4 rounded-lg bg-gradient-to-br from-yellow-600/10 to-yellow-500/5 border-2 border-yellow-600/30">
-      <div className="flex items-center gap-2 mb-2">
+    <div className="rounded-lg border-2 border-yellow-600/30 bg-gradient-to-br from-yellow-600/10 to-yellow-500/5 p-4">
+      <div className="mb-2 flex items-center gap-2">
         <Calendar className="h-4 w-4 text-yellow-400" />
         <p className="text-xs text-gray-400">تاريخ الانتهاء:</p>
         <p className="text-xs font-semibold text-yellow-400">
@@ -146,8 +157,9 @@ function SubscriptionCountdown({
       <div className="flex items-center gap-2">
         <p className="text-xs text-gray-400">الوقت المتبقي:</p>
         <p
-          className={`text-sm font-bold font-mono ${isExpired ? "text-red-400" : "text-yellow-400"
-            }`}
+          className={`font-mono text-sm font-bold ${
+            isExpired ? "text-red-400" : "text-yellow-400"
+          }`}
         >
           {isExpired ? "منتهي" : timeRemaining || "00:00:00"}
         </p>
@@ -167,7 +179,6 @@ function CountdownTimer({ usedAt }: { usedAt: Date | null }) {
     const updateTimer = () => {
       const now = new Date();
       const used = new Date(usedAt);
-
       const nextAvailableTime = new Date(used);
       nextAvailableTime.setHours(nextAvailableTime.getHours() + 24);
 
@@ -188,20 +199,18 @@ function CountdownTimer({ usedAt }: { usedAt: Date | null }) {
       setTimeRemaining(
         `${hours.toString().padStart(2, "0")}:${minutes
           .toString()
-          .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`
+          .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`,
       );
     };
 
-    const t = setTimeout(updateTimer, 0);
+    const timeout = setTimeout(updateTimer, 0);
     const interval = setInterval(updateTimer, 1000);
 
     return () => {
-      clearTimeout(t);
+      clearTimeout(timeout);
       clearInterval(interval);
     };
-    // usedAtKey is a primitive to avoid effect loops from Date reference changes
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [usedAtKey]);
+  }, [usedAt, usedAtKey]);
 
   if (!usedAt) return null;
 
@@ -218,13 +227,13 @@ function CountdownTimer({ usedAt }: { usedAt: Date | null }) {
   });
 
   return (
-    <div className="mt-3 p-3 rounded-lg bg-gray-800/50 border border-yellow-600/20">
-      <div className="flex items-center gap-2 mb-2">
+    <div className="mt-3 rounded-lg border border-yellow-600/20 bg-gray-800/50 p-3">
+      <div className="mb-2 flex items-center gap-2">
         <Clock className="h-4 w-4 text-yellow-400" />
         <p className="text-xs text-gray-400">تم الاستخدام في:</p>
         <p className="text-xs font-semibold text-yellow-400">{usedTime}</p>
       </div>
-      <div className="flex items-center gap-2 mb-2">
+      <div className="mb-2 flex items-center gap-2">
         <p className="text-xs text-gray-400">يمكن الاستخدام مرة أخرى في:</p>
         <p className="text-xs font-semibold text-yellow-400">
           {nextAvailableTimeStr}
@@ -233,8 +242,9 @@ function CountdownTimer({ usedAt }: { usedAt: Date | null }) {
       <div className="flex items-center gap-2">
         <p className="text-xs text-gray-400">الوقت المتبقي:</p>
         <p
-          className={`text-sm font-bold font-mono ${isExpired ? "text-green-400" : "text-yellow-400"
-            }`}
+          className={`font-mono text-sm font-bold ${
+            isExpired ? "text-green-400" : "text-yellow-400"
+          }`}
         >
           {isExpired ? "متاح الآن" : timeRemaining || "00:00:00"}
         </p>
@@ -243,102 +253,71 @@ function CountdownTimer({ usedAt }: { usedAt: Date | null }) {
   );
 }
 
-export default function CardClient({ card }: CardClientProps) {
-  const [groupedStores, setGroupedStores] = useState<GroupedStore[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [usageStates, setUsageStates] = useState<
-    Record<string, { loading: boolean; used: boolean; usedAt: Date | null }>
-  >({});
+export default function CardClient({
+  card,
+  initialGroupedStores,
+  initialFavoriteStoreIds,
+  initialUsageStates,
+}: CardClientProps) {
+  const [groupedStores] = useState<GroupedStore[]>(initialGroupedStores);
+  const [usageStates, setUsageStates] =
+    useState<Record<string, UsageState>>(initialUsageStates);
   const [favoriteStoreIds, setFavoriteStoreIds] = useState<Set<string>>(
-    new Set()
+    () => new Set(initialFavoriteStoreIds),
   );
   const [favoriteLoading, setFavoriteLoading] = useState<
     Record<string, boolean>
   >({});
   const [selectedPlace, setSelectedPlace] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [usagePromptStore, setUsagePromptStore] =
+    useState<StoreWithCategory | null>(null);
 
-  useEffect(() => {
-    const fetchStores = async () => {
-      setLoading(true);
-      try {
-        const response = await getStoresGroupedByPlace();
-        if (response.success) {
-          setGroupedStores(response.data);
-          // Initialize usage states and check for each store
-          if (card.data) {
-            const states: Record<
-              string,
-              { loading: boolean; used: boolean; usedAt: Date | null }
-            > = {};
-            response.data.forEach((group) => {
-              group.stores.forEach((store) => {
-                states[store._id] = {
-                  loading: false,
-                  used: false,
-                  usedAt: null,
-                };
-              });
-            });
-            setUsageStates(states);
-            // Check usage for all stores
-            checkAllUsage(response.data);
-            // Fetch favorites
-            fetchFavorites();
-          }
-        } else {
-          toast.error(response.message || "فشل في جلب المحلات");
-        }
-      } catch (error) {
-        console.error("Error fetching stores:", error);
-        toast.error("حدث خطأ أثناء جلب المحلات");
-      } finally {
-        setLoading(false);
-      }
-    };
+  if (!card.success || !card.data) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 p-4">
+        <div className="flex min-h-screen items-center justify-center">
+          <Card className="w-full max-w-md border-2 border-yellow-600/30 bg-gradient-to-br from-gray-800/90 to-gray-900/90 shadow-2xl shadow-yellow-500/10 backdrop-blur-sm">
+            <CardContent className="pt-6">
+              <div className="text-center">
+                <XCircle className="mx-auto mb-4 h-12 w-12 text-red-400" />
+                <p className="text-lg font-semibold text-gray-200">
+                  {card.message || "البطاقة غير موجودة"}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
-    fetchStores();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const fetchFavorites = async () => {
-    if (!card.data) return;
-    try {
-      const userId = String(card.data.user._id);
-      const response = await getFavorites(userId);
-      if (response.success) {
-        setFavoriteStoreIds(new Set(response.data));
-      }
-    } catch (error) {
-      console.error("Error fetching favorites:", error);
-    }
-  };
+  const { user, subscription, isExpired } = card.data;
 
   const handleToggleFavorite = async (storeId: string) => {
-    if (!card.data) return;
+    const userId = String(user._id);
 
-    const userId = String(card.data.user._id);
-
-    // Set loading state
     setFavoriteLoading((prev) => ({ ...prev, [storeId]: true }));
 
     try {
       const response = await toggleFavorite(userId, storeId);
-      if (response.success) {
-        // Update favorites state
-        setFavoriteStoreIds((prev) => {
-          const newSet = new Set(prev);
-          if (response.isFavorite) {
-            newSet.add(storeId);
-          } else {
-            newSet.delete(storeId);
-          }
-          return newSet;
-        });
-        toast.success(response.message);
-      } else {
+
+      if (!response.success) {
         toast.error(response.message || "فشل في تحديث المفضلة");
+        return;
       }
+
+      setFavoriteStoreIds((prev) => {
+        const next = new Set(prev);
+        if (response.isFavorite) {
+          next.add(storeId);
+        } else {
+          next.delete(storeId);
+        }
+        return next;
+      });
+
+      toast.success(response.message);
     } catch (error) {
       console.error("Error toggling favorite:", error);
       toast.error("حدث خطأ أثناء تحديث المفضلة");
@@ -347,131 +326,95 @@ export default function CardClient({ card }: CardClientProps) {
     }
   };
 
-  const checkAllUsage = async (stores: GroupedStore[]) => {
-    if (!card.data) return;
+  const openUsagePrompt = (store: StoreWithCategory) => {
+    if (isExpired) return;
 
-    const userId = String(card.data.user._id);
-    const subscriptionId = String(card.data.subscription._id);
+    const storeState = usageStates[store._id];
+    if (storeState?.used || storeState?.loading) return;
 
-    // Check usage for each store in parallel, then apply a single batch update
-    const checks = stores.flatMap((group) =>
-      group.stores.map(async (store) => {
-        const response = await checkUsageAllowed(
-          userId,
-          subscriptionId,
-          store._id
-        );
-        return { storeId: store._id, response };
-      })
-    );
-
-    const results = await Promise.all(checks);
-    const updates: Record<
-      string,
-      { loading: boolean; used: boolean; usedAt: Date | null }
-    > = {};
-    for (const { storeId, response } of results) {
-      if (response.success) {
-        updates[storeId] = {
-          loading: false,
-          used: !response.allowed,
-          usedAt: response.usedAt ? new Date(response.usedAt) : null,
-        };
-      }
-    }
-    setUsageStates((prev) => ({ ...prev, ...updates }));
+    setUsagePromptStore(store);
   };
 
-  const handleUseStore = async (storeId: string) => {
-    if (!card.data) return;
+  const handleUsageDecision = (usedDiscount: boolean) => {
+    if (!usagePromptStore) return;
 
-    const userId = String(card.data.user._id);
-    const subscriptionId = String(card.data.subscription._id);
+    const storeId = usagePromptStore._id;
+    const usedAt = new Date();
 
-    // Set loading state
+    setUsagePromptStore(null);
     setUsageStates((prev) => ({
       ...prev,
-      [storeId]: { ...prev[storeId], loading: true },
+      [storeId]: { loading: false, used: true, usedAt },
     }));
+    toast.success("تم تسجيل الاستخدام بنجاح");
 
-    try {
-      // Check if allowed first
-      const checkResponse = await checkUsageAllowed(
-        userId,
-        subscriptionId,
-        storeId
-      );
+    void recordUsage(
+      String(user._id),
+      String(subscription._id),
+      storeId,
+      usedDiscount,
+    )
+      .then((response) => {
+        if (response.success) return;
 
-      if (!checkResponse.allowed) {
-        toast.error(checkResponse.message || "لا يمكن استخدام هذا المحل");
-        setUsageStates((prev) => ({
-          ...prev,
-          [storeId]: {
-            loading: false,
-            used: true,
-            usedAt: checkResponse.usedAt
-              ? new Date(checkResponse.usedAt)
-              : null,
-          },
-        }));
-        return;
-      }
+        if (response.message?.includes("بالفعل")) {
+          toast.warning(response.message);
+          return;
+        }
 
-      // Record usage
-      const response = await recordUsage(userId, subscriptionId, storeId);
-
-      if (response.success) {
-        toast.success("تم استخدام الخصم بنجاح!");
-        const usedAt = response.data?.usedAt
-          ? new Date(response.data.usedAt)
-          : new Date();
-        setUsageStates((prev) => ({
-          ...prev,
-          [storeId]: { loading: false, used: true, usedAt },
-        }));
-      } else {
         toast.error(response.message || "فشل في تسجيل الاستخدام");
         setUsageStates((prev) => ({
           ...prev,
           [storeId]: { loading: false, used: false, usedAt: null },
         }));
-      }
-    } catch (error) {
-      console.error("Error using store:", error);
-      toast.error("حدث خطأ أثناء استخدام المحل");
-      setUsageStates((prev) => ({
-        ...prev,
-        [storeId]: { loading: false, used: false, usedAt: null },
-      }));
-    }
+      })
+      .catch((error) => {
+        console.error("Error using store:", error);
+        toast.error("حدث خطأ أثناء استخدام المحل");
+        setUsageStates((prev) => ({
+          ...prev,
+          [storeId]: { loading: false, used: false, usedAt: null },
+        }));
+      });
   };
 
-  if (!card.success || !card.data) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-gray-900 via-black to-gray-900">
-        <Card className="w-full max-w-md border-2 border-yellow-600/30 bg-gradient-to-br from-gray-800/90 to-gray-900/90 backdrop-blur-sm shadow-2xl shadow-yellow-500/10">
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <XCircle className="h-12 w-12 text-red-400 mx-auto mb-4" />
-              <p className="text-lg font-semibold text-gray-200">
-                {card.message || "البطاقة غير موجودة"}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  const filteredGroups = groupedStores
+    .filter((group) => {
+      if (selectedPlace === "all") return true;
+      return String(group.place._id) === selectedPlace;
+    })
+    .map((group) => {
+      const filteredStores = group.stores.filter((store) => {
+        if (!searchQuery.trim()) return true;
 
-  const { user, subscription, isExpired } = card.data;
+        const query = searchQuery.toLowerCase().trim();
+        return (
+          store.name.toLowerCase().includes(query) ||
+          store.address.toLowerCase().includes(query)
+        );
+      });
+
+      const sortedStores = [...filteredStores].sort((a, b) => {
+        const aIsFavorite = favoriteStoreIds.has(a._id);
+        const bIsFavorite = favoriteStoreIds.has(b._id);
+        if (aIsFavorite && !bIsFavorite) return -1;
+        if (!aIsFavorite && bIsFavorite) return 1;
+        return 0;
+      });
+
+      return {
+        place: group.place,
+        stores: sortedStores,
+      };
+    })
+    .filter((group) => group.stores.length > 0);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 p-4">
-      <div className="max-w-6xl mx-auto space-y-6">
-        {/* VIP Card Display */}
-        <Card className="overflow-hidden shadow-2xl bg-transparent border-none shadow-yellow-500/30">
+      <div className="mx-auto max-w-6xl space-y-6">
+        <Card className="overflow-hidden border-none bg-transparent shadow-2xl shadow-yellow-500/30">
           <CardContent className="p-0">
-            <div className="relative w-full aspect-[16/9] bg-black">
+            <div className="relative aspect-[16/9] w-full bg-black">
               <Image
                 src="/card.png"
                 alt="VIP Card"
@@ -480,358 +423,309 @@ export default function CardClient({ card }: CardClientProps) {
                 priority
               />
             </div>
-
-
           </CardContent>
         </Card>
 
-
-
-        {/* User Details */}
-        <div className="p-5 md:p-6 bg-gradient-to-br from-gray-900/95 via-gray-800/90 to-black border-t-2 border-yellow-600/30">
-          <h3 className="text-sm font-semibold text-yellow-400/90 mb-4 flex items-center gap-2">
+        <div className="border-t-2 border-yellow-600/30 bg-gradient-to-br from-gray-900/95 via-gray-800/90 to-black p-5 md:p-6">
+          <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold text-yellow-400/90">
             <User className="h-4 w-4" />
             بيانات العضو
           </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-800/60 border border-yellow-600/20 hover:border-yellow-600/40 transition-colors">
-              <div className="flex-shrink-0 p-2 rounded-lg bg-yellow-600/20">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:gap-4 lg:grid-cols-4">
+            <div className="flex items-center gap-3 rounded-lg border border-yellow-600/20 bg-gray-800/60 p-3 transition-colors hover:border-yellow-600/40">
+              <div className="flex-shrink-0 rounded-lg bg-yellow-600/20 p-2">
                 <User className="h-4 w-4 text-yellow-400" />
               </div>
               <div className="min-w-0">
-                <p className="text-xs text-gray-500 mb-0.5">الاسم</p>
-                <p className="text-sm font-semibold text-white truncate">{user.name}</p>
+                <p className="mb-0.5 text-xs text-gray-500">الاسم</p>
+                <p className="truncate text-sm font-semibold text-white">
+                  {user.name}
+                </p>
               </div>
             </div>
+
             {user.email && (
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-800/60 border border-yellow-600/20 hover:border-yellow-600/40 transition-colors">
-                <div className="flex-shrink-0 p-2 rounded-lg bg-yellow-600/20">
+              <div className="flex items-center gap-3 rounded-lg border border-yellow-600/20 bg-gray-800/60 p-3 transition-colors hover:border-yellow-600/40">
+                <div className="flex-shrink-0 rounded-lg bg-yellow-600/20 p-2">
                   <Mail className="h-4 w-4 text-yellow-400" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-xs text-gray-500 mb-0.5">البريد الإلكتروني</p>
-                  <p className="text-sm font-semibold text-white truncate">{user.email}</p>
+                  <p className="mb-0.5 text-xs text-gray-500">
+                    البريد الإلكتروني
+                  </p>
+                  <p className="truncate text-sm font-semibold text-white">
+                    {user.email}
+                  </p>
                 </div>
               </div>
             )}
+
             {user.mobile_number && (
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-800/60 border border-yellow-600/20 hover:border-yellow-600/40 transition-colors">
-                <div className="flex-shrink-0 p-2 rounded-lg bg-yellow-600/20">
+              <div className="flex items-center gap-3 rounded-lg border border-yellow-600/20 bg-gray-800/60 p-3 transition-colors hover:border-yellow-600/40">
+                <div className="flex-shrink-0 rounded-lg bg-yellow-600/20 p-2">
                   <Phone className="h-4 w-4 text-yellow-400" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-xs text-gray-500 mb-0.5">رقم الجوال</p>
-                  <p className="text-sm font-semibold text-white truncate" dir="ltr">{user.mobile_number}</p>
+                  <p className="mb-0.5 text-xs text-gray-500">رقم الجوال</p>
+                  <p
+                    className="truncate text-sm font-semibold text-white"
+                    dir="ltr"
+                  >
+                    {user.mobile_number}
+                  </p>
                 </div>
               </div>
             )}
+
             {user.id_number && (
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-800/60 border border-yellow-600/20 hover:border-yellow-600/40 transition-colors">
-                <div className="flex-shrink-0 p-2 rounded-lg bg-yellow-600/20">
+              <div className="flex items-center gap-3 rounded-lg border border-yellow-600/20 bg-gray-800/60 p-3 transition-colors hover:border-yellow-600/40">
+                <div className="flex-shrink-0 rounded-lg bg-yellow-600/20 p-2">
                   <CreditCard className="h-4 w-4 text-yellow-400" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-xs text-gray-500 mb-0.5">رقم الهوية</p>
-                  <p className="text-sm font-semibold text-white truncate" dir="ltr">{user.id_number}</p>
+                  <p className="mb-0.5 text-xs text-gray-500">رقم الهوية</p>
+                  <p
+                    className="truncate text-sm font-semibold text-white"
+                    dir="ltr"
+                  >
+                    {user.id_number}
+                  </p>
                 </div>
               </div>
             )}
           </div>
+
           {(user.email || user.mobile_number || user.id_number) && (
-            <p className="text-xs text-gray-500 mt-3 text-center">
+            <p className="mt-3 text-center text-xs text-gray-500">
               تُعرض فقط البيانات المسجلة في حسابك
             </p>
           )}
         </div>
 
+        {!isExpired &&
+          (groupedStores.length === 0 ? (
+            <Card className="border-2 border-yellow-600/30 bg-gradient-to-br from-gray-800/90 to-gray-900/90 shadow-xl backdrop-blur-sm">
+              <CardContent className="pt-6">
+                <div className="py-8 text-center">
+                  <p className="text-gray-400">لا توجد محلات متاحة</p>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card className="border-4 border-yellow-600/40 bg-gradient-to-br from-black via-gray-900 to-black shadow-2xl shadow-yellow-500/20">
+              <CardHeader>
+                <CardTitle className="mb-4 text-2xl font-bold text-yellow-400">
+                  المحلات المتاحة
+                </CardTitle>
 
-        {/* Stores by Place */}
-        {loading ? (
-          <Card className="border-2 border-yellow-600/30 bg-gradient-to-br from-gray-800/90 to-gray-900/90 backdrop-blur-sm shadow-xl">
-            <CardContent className="pt-6">
-              <div className="text-center py-8">
-                <Loader2 className="h-8 w-8 animate-spin mx-auto text-yellow-400" />
-                <p className="mt-4 text-gray-400">جاري تحميل المحلات...</p>
-              </div>
-            </CardContent>
-          </Card>
-        ) : groupedStores.length === 0 ? (
-          <Card className="border-2 border-yellow-600/30 bg-gradient-to-br from-gray-800/90 to-gray-900/90 backdrop-blur-sm shadow-xl">
-            <CardContent className="pt-6">
-              <div className="text-center py-8">
-                <p className="text-gray-400">لا توجد محلات متاحة</p>
-              </div>
-            </CardContent>
-          </Card>
-        ) : (
-          <Card className="border-4 border-yellow-600/40 bg-gradient-to-br from-black via-gray-900 to-black shadow-2xl shadow-yellow-500/20">
-            <CardHeader className="">
-              <CardTitle className="text-2xl text-yellow-400 mb-4 font-bold">
-                المحلات المتاحة
-              </CardTitle>
-
-              {/* Places Filter */}
-              <div className="mb-4">
-                <p className="text-sm text-yellow-400 mb-3 font-semibold">
-                  فلترة حسب المكان:
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    variant={selectedPlace === "all" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => {
-                      setSelectedPlace("all");
-                      setSearchQuery("");
-                    }}
-                    className={
-                      selectedPlace === "all"
-                        ? "bg-gradient-to-r from-yellow-600 to-yellow-500 text-black border-yellow-500/50 hover:from-yellow-500 hover:to-yellow-400 shadow-lg shadow-yellow-500/30 font-bold"
-                        : "bg-gray-800/80 text-gray-300 border-gray-600/50 hover:bg-gray-700/80 hover:border-yellow-600/30"
-                    }
-                  >
-                    الكل
-                  </Button>
-                  {Array.from(
-                    new Set(
-                      groupedStores.map((g) => ({
-                        id: String(g.place._id),
-                        name: g.place.name,
-                      }))
-                    )
-                  ).map((place) => (
+                <div className="mb-4">
+                  <p className="mb-3 text-sm font-semibold text-yellow-400">
+                    فلترة حسب المكان:
+                  </p>
+                  <div className="flex flex-wrap gap-2">
                     <Button
-                      key={place.id}
-                      variant={
-                        selectedPlace === place.id ? "default" : "outline"
-                      }
+                      variant={selectedPlace === "all" ? "default" : "outline"}
                       size="sm"
                       onClick={() => {
-                        setSelectedPlace(place.id);
+                        setSelectedPlace("all");
                         setSearchQuery("");
                       }}
                       className={
-                        selectedPlace === place.id
-                          ? "bg-gradient-to-r from-yellow-600 to-yellow-500 text-black border-yellow-500/50 hover:from-yellow-500 hover:to-yellow-400 shadow-lg shadow-yellow-500/30 font-bold"
-                          : "bg-gray-800/80 text-gray-300 border-gray-600/50 hover:bg-gray-700/80 hover:border-yellow-600/30"
+                        selectedPlace === "all"
+                          ? "border-yellow-500/50 bg-gradient-to-r from-yellow-600 to-yellow-500 font-bold text-black shadow-lg shadow-yellow-500/30 hover:from-yellow-500 hover:to-yellow-400"
+                          : "border-gray-600/50 bg-gray-800/80 text-gray-300 hover:border-yellow-600/30 hover:bg-gray-700/80"
                       }
                     >
-                      {place.name}
+                      الكل
                     </Button>
-                  ))}
-                </div>
-              </div>
 
-              {/* Search Bar */}
-              <div className="mt-4">
-                <p className="text-sm text-yellow-400 mb-3 font-semibold">
-                  البحث في المحلات:
-                </p>
-                <div className="relative">
-                  <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                  <Input
-                    type="text"
-                    placeholder="ابحث عن محل بالاسم أو العنوان..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pr-10 bg-gray-800/80 text-white border-gray-600/50 focus:border-yellow-600/50 focus:ring-yellow-600/20"
-                  />
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="pt-6">
-              <div className="space-y-6">
-                {(() => {
-                  // Filter stores based on selected place and search query
-                  let filteredGroups = groupedStores;
-
-                  // Filter by place
-                  if (selectedPlace !== "all") {
-                    filteredGroups = filteredGroups.filter(
-                      (group) => String(group.place._id) === selectedPlace
-                    );
-                  }
-
-                  // Filter by search query and group by place
-                  const result: Array<{
-                    place: PlaceType;
-                    stores: StoreWithCategory[];
-                  }> = [];
-
-                  filteredGroups.forEach((group) => {
-                    const filteredStores = group.stores.filter((store) => {
-                      if (searchQuery.trim()) {
-                        const query = searchQuery.toLowerCase().trim();
-                        return (
-                          store.name.toLowerCase().includes(query) ||
-                          store.address.toLowerCase().includes(query)
-                        );
-                      }
-                      return true;
-                    });
-
-                    // Sort stores: favorites first, then the rest
-                    const sortedStores = [...filteredStores].sort((a, b) => {
-                      const aIsFavorite = favoriteStoreIds.has(a._id);
-                      const bIsFavorite = favoriteStoreIds.has(b._id);
-                      if (aIsFavorite && !bIsFavorite) return -1;
-                      if (!aIsFavorite && bIsFavorite) return 1;
-                      return 0;
-                    });
-
-                    if (sortedStores.length > 0) {
-                      result.push({
-                        place: group.place,
-                        stores: sortedStores,
-                      });
-                    }
-                  });
-
-                  if (result.length === 0) {
-                    return (
-                      <div className="text-center py-8">
-                        <p className="text-gray-400">
-                          لا توجد محلات متطابقة مع الفلتر المحدد
-                        </p>
-                      </div>
-                    );
-                  }
-
-                  return result.map((group) => (
-                    <div key={String(group.place._id)}>
-                      <h3 className="text-lg font-semibold text-yellow-400 mb-4">
+                    {groupedStores.map((group) => (
+                      <Button
+                        key={String(group.place._id)}
+                        variant={
+                          selectedPlace === String(group.place._id)
+                            ? "default"
+                            : "outline"
+                        }
+                        size="sm"
+                        onClick={() => {
+                          setSelectedPlace(String(group.place._id));
+                          setSearchQuery("");
+                        }}
+                        className={
+                          selectedPlace === String(group.place._id)
+                            ? "border-yellow-500/50 bg-gradient-to-r from-yellow-600 to-yellow-500 font-bold text-black shadow-lg shadow-yellow-500/30 hover:from-yellow-500 hover:to-yellow-400"
+                            : "border-gray-600/50 bg-gray-800/80 text-gray-300 hover:border-yellow-600/30 hover:bg-gray-700/80"
+                        }
+                      >
                         {group.place.name}
-                      </h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {group.stores.map((store) => {
-                          const storeState = usageStates[store._id] || {
-                            loading: false,
-                            used: false,
-                            usedAt: null,
-                          };
-                          const canUse = !isExpired && !storeState.used;
+                      </Button>
+                    ))}
+                  </div>
+                </div>
 
-                          return (
-                            <div
-                              key={store._id}
-                              className={`border-2 rounded-lg p-4 space-y-3 bg-gradient-to-br from-gray-800/80 to-gray-900/80 backdrop-blur-sm hover:border-yellow-500/40 transition-all duration-300 shadow-lg hover:shadow-yellow-500/10 ${favoriteStoreIds.has(store._id)
-                                ? "border-yellow-500/60 bg-gradient-to-br from-yellow-900/20 to-gray-900/80"
-                                : "border-yellow-600/20"
+                <div className="mt-4">
+                  <p className="mb-3 text-sm font-semibold text-yellow-400">
+                    البحث في المحلات:
+                  </p>
+                  <div className="relative">
+                    <Search className="absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+                    <Input
+                      type="text"
+                      placeholder="ابحث عن محل بالاسم أو العنوان..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="border-gray-600/50 bg-gray-800/80 pr-10 text-white focus:border-yellow-600/50 focus:ring-yellow-600/20"
+                    />
+                  </div>
+                </div>
+              </CardHeader>
+
+              <CardContent className="pt-6">
+                <div className="space-y-6">
+                  {filteredGroups.length === 0 ? (
+                    <div className="py-8 text-center">
+                      <p className="text-gray-400">
+                        لا توجد محلات مطابقة مع الفلتر المحدد
+                      </p>
+                    </div>
+                  ) : (
+                    filteredGroups.map((group) => (
+                      <div key={String(group.place._id)}>
+                        <h3 className="mb-4 text-lg font-semibold text-yellow-400">
+                          {group.place.name}
+                        </h3>
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                          {group.stores.map((store) => {
+                            const storeState = usageStates[store._id] || {
+                              loading: false,
+                              used: false,
+                              usedAt: null,
+                            };
+                            const canUse = !storeState.used;
+
+                            return (
+                              <div
+                                key={store._id}
+                                className={`space-y-3 rounded-lg border-2 bg-gradient-to-br from-gray-800/80 to-gray-900/80 p-4 shadow-lg backdrop-blur-sm transition-all duration-300 hover:border-yellow-500/40 hover:shadow-yellow-500/10 ${
+                                  favoriteStoreIds.has(store._id)
+                                    ? "border-yellow-500/60 bg-gradient-to-br from-yellow-900/20 to-gray-900/80"
+                                    : "border-yellow-600/20"
                                 }`}
-                            >
-                              <div className="flex items-start justify-between">
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-2 mb-2">
-                                    <h3 className="font-semibold text-lg text-white">
-                                      {store.name}
-                                    </h3>
-                                    {favoriteStoreIds.has(store._id) && (
-                                      <Badge className="bg-gradient-to-r from-yellow-600/40 to-yellow-500/30 text-yellow-300 border border-yellow-500/50 text-xs px-2 py-0.5">
-                                        مفضل
+                              >
+                                <div className="flex items-start justify-between">
+                                  <div className="flex-1">
+                                    <div className="mb-2 flex items-center gap-2">
+                                      <h3 className="text-lg font-semibold text-white">
+                                        {store.name}
+                                      </h3>
+                                      {favoriteStoreIds.has(store._id) && (
+                                        <Badge className="border border-yellow-500/50 bg-gradient-to-r from-yellow-600/40 to-yellow-500/30 px-2 py-0.5 text-xs text-yellow-300">
+                                          مفضل
+                                        </Badge>
+                                      )}
+                                    </div>
+
+                                    <div className="mb-2 mt-1 flex items-center gap-2">
+                                      <Badge className="border-2 border-yellow-500/40 bg-gradient-to-r from-yellow-600/30 to-yellow-500/20 font-bold text-yellow-400 shadow-md hover:from-yellow-600/40 hover:to-yellow-500/30">
+                                        {store.category.letter}
                                       </Badge>
+                                      <span className="text-sm font-bold text-yellow-400">
+                                        خصم {store.discount}%
+                                      </span>
+                                    </div>
+
+                                    {store.address && (
+                                      <div className="mt-2">
+                                        <p className="mb-1 text-xs text-gray-400">
+                                          العنوان:
+                                        </p>
+                                        <p className="text-sm text-gray-300">
+                                          {store.address}
+                                        </p>
+                                      </div>
                                     )}
                                   </div>
-                                  <div className="flex items-center gap-2 mt-1 mb-2">
-                                    <Badge className="bg-gradient-to-r from-yellow-600/30 to-yellow-500/20 text-yellow-400 border-2 border-yellow-500/40 hover:from-yellow-600/40 hover:to-yellow-500/30 font-bold shadow-md">
-                                      {store.category.letter}
-                                    </Badge>
-                                    <span className="text-sm text-yellow-400 font-bold">
-                                      خصم {store.discount}%
-                                    </span>
-                                  </div>
-                                  {store.address && (
-                                    <div className="mt-2">
-                                      <p className="text-xs text-gray-400 mb-1">العنوان:</p>
-                                      <p className="text-sm text-gray-300">{store.address}</p>
-                                    </div>
-                                  )}
-                                </div>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() =>
-                                    handleToggleFavorite(store._id)
-                                  }
-                                  disabled={favoriteLoading[store._id]}
-                                  className={`p-1 h-8 w-8 ${favoriteStoreIds.has(store._id)
-                                    ? "text-yellow-400 hover:text-yellow-300"
-                                    : "text-gray-400 hover:text-yellow-400"
+
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() =>
+                                      handleToggleFavorite(store._id)
+                                    }
+                                    disabled={favoriteLoading[store._id]}
+                                    className={`h-8 w-8 p-1 ${
+                                      favoriteStoreIds.has(store._id)
+                                        ? "text-yellow-400 hover:text-yellow-300"
+                                        : "text-gray-400 hover:text-yellow-400"
                                     }`}
-                                >
-                                  {favoriteLoading[store._id] ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                  ) : (
+                                  >
                                     <Heart
-                                      className={`h-5 w-5 ${favoriteStoreIds.has(store._id)
-                                        ? "fill-yellow-400"
-                                        : ""
-                                        }`}
+                                      className={`h-5 w-5 ${
+                                        favoriteStoreIds.has(store._id)
+                                          ? "fill-yellow-400"
+                                          : ""
+                                      }`}
                                     />
+                                  </Button>
+                                </div>
+
+                                <Button
+                                  onClick={() => openUsagePrompt(store)}
+                                  disabled={!canUse || storeState.loading}
+                                  className={`w-full border-2 font-bold transition-all duration-300 ${
+                                    storeState.used
+                                      ? "cursor-not-allowed border-gray-700 bg-gray-800/80 text-gray-500"
+                                      : "border-yellow-500/50 bg-gradient-to-r from-yellow-600 to-yellow-500 text-black shadow-xl shadow-yellow-500/40 hover:from-yellow-500 hover:to-yellow-400 hover:shadow-yellow-500/60"
+                                  }`}
+                                  variant={
+                                    storeState.used ? "secondary" : "default"
+                                  }
+                                >
+                                  {storeState.used ? (
+                                    <>
+                                      <CheckCircle2 className="mr-2 h-4 w-4" />
+                                      تم الاستخدام
+                                    </>
+                                  ) : (
+                                    "استخدام"
                                   )}
                                 </Button>
-                              </div>
-                              <Button
-                                onClick={() => handleUseStore(store._id)}
-                                disabled={!canUse || storeState.loading}
-                                className={`w-full font-bold transition-all duration-300 ${storeState.used
-                                  ? "bg-gray-800/80 text-gray-500 border-2 border-gray-700 cursor-not-allowed"
-                                  : canUse
-                                    ? "bg-gradient-to-r from-yellow-600 to-yellow-500 text-black hover:from-yellow-500 hover:to-yellow-400 shadow-xl shadow-yellow-500/40 hover:shadow-yellow-500/60 border-2 border-yellow-500/50"
-                                    : "bg-gray-800/80 text-gray-500 border-2 border-gray-700 cursor-not-allowed"
-                                  }`}
-                                variant={
-                                  storeState.used ? "secondary" : "default"
-                                }
-                              >
-                                {storeState.loading ? (
-                                  <>
-                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                    جاري المعالجة...
-                                  </>
-                                ) : storeState.used ? (
-                                  <>
-                                    <CheckCircle2
-                                      className="h-4 w-4 mr-2"
-                                      color="green"
-                                    />
-                                    تم الاستخدام
-                                  </>
-                                ) : (
-                                  "استخدام"
-                                )}
-                              </Button>
-                              {storeState.used && (
-                                <>
-                                  <p className="text-xs text-center text-gray-400 mb-2">
-                                    تم استخدام الخصم اليوم
-                                  </p>
-                                  <CountdownTimer usedAt={storeState.usedAt} />
-                                </>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ));
-                })()}
-              </div>
-            </CardContent>
-          </Card>
-        )}
 
-        {/* Subscription Status */}
+                                {storeState.used && (
+                                  <>
+                                    <p className="mb-2 text-center text-xs text-gray-400">
+                                      تم استخدام الخصم اليوم
+                                    </p>
+                                    <CountdownTimer
+                                      usedAt={storeState.usedAt}
+                                    />
+                                  </>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+
         <Card className="border-4 border-yellow-600/40 bg-gradient-to-br from-black via-gray-900 to-black shadow-2xl shadow-yellow-500/20 backdrop-blur-sm">
           <CardHeader className="border-b-2 border-yellow-600/30 bg-gradient-to-r from-yellow-600/10 to-transparent">
-            <CardTitle className="flex items-center gap-3 text-yellow-400 text-xl">
+            <CardTitle className="flex items-center gap-3 text-xl text-yellow-400">
               {isExpired ? (
                 <>
                   <XCircle className="h-6 w-6 text-red-400 drop-shadow-[0_0_8px_rgba(239,68,68,0.6)]" />
-                  <span className="text-red-400 font-bold">الاشتراك منتهي</span>
+                  <span className="font-bold text-red-400">الاشتراك منتهي</span>
                 </>
               ) : (
                 <>
                   <CheckCircle2 className="h-6 w-6 text-yellow-400 drop-shadow-[0_0_8px_rgba(255,215,0,0.6)]" />
-                  <span className="text-yellow-400 font-bold">
+                  <span className="font-bold text-yellow-400">
                     الاشتراك نشط
                   </span>
                 </>
@@ -839,30 +733,80 @@ export default function CardClient({ card }: CardClientProps) {
             </CardTitle>
           </CardHeader>
           <CardContent className="bg-gradient-to-br from-gray-900/80 to-black/80">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-              <div className="p-5 rounded-lg bg-gradient-to-br from-yellow-600/10 to-yellow-500/5 border-2 border-yellow-600/30 shadow-lg">
-                <p className="text-sm text-gray-300 mb-2 font-medium">
+            <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-3">
+              <div className="rounded-lg border-2 border-yellow-600/30 bg-gradient-to-br from-yellow-600/10 to-yellow-500/5 p-5 shadow-lg">
+                <p className="mb-2 text-sm font-medium text-gray-300">
                   تاريخ البدء
                 </p>
-                <p className="font-bold text-yellow-400 text-lg">
+                <p className="text-lg font-bold text-yellow-400">
                   {formatDate(subscription.startDate)}
                 </p>
               </div>
-              <div className="p-5 rounded-lg bg-gradient-to-br from-yellow-600/10 to-yellow-500/5 border-2 border-yellow-600/30 shadow-lg">
-                <p className="text-sm text-gray-300 mb-2 font-medium">
+
+              <div className="rounded-lg border-2 border-yellow-600/30 bg-gradient-to-br from-yellow-600/10 to-yellow-500/5 p-5 shadow-lg">
+                <p className="mb-2 text-sm font-medium text-gray-300">
                   تاريخ الانتهاء
                 </p>
-                <p className="font-bold text-yellow-400 text-lg">
+                <p className="text-lg font-bold text-yellow-400">
                   {formatDate(subscription.expiresAt)}
                 </p>
               </div>
+
               {!isExpired && (
                 <SubscriptionCountdown expiresAt={subscription.expiresAt} />
               )}
             </div>
+
+            {isExpired && (
+              <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-center text-red-100">
+                <p className="text-sm font-medium">
+                  الاشتراك منتهي. للتجديد يرجى التواصل على الرقم
+                </p>
+                <a
+                  href={`https://wa.me/${RENEWAL_PHONE_NUMBER}`}
+                  target="_blank"
+                  className="mt-2 inline-block text-lg font-bold text-yellow-400 underline underline-offset-4"
+                >
+                  {RENEWAL_PHONE_NUMBER}
+                </a>
+              </div>
+            )}
           </CardContent>
         </Card>
 
+        <Dialog
+          open={usagePromptStore !== null}
+          onOpenChange={(open) => {
+            if (!open) {
+              setUsagePromptStore(null);
+            }
+          }}
+        >
+          <DialogContent
+            className="max-w-md text-right"
+            showCloseButton={false}
+          >
+            <DialogHeader className="text-right">
+              <DialogTitle>تأكيد الاستخدام</DialogTitle>
+              <DialogDescription>
+                هل تم استخدام الخصم في
+                {usagePromptStore ? ` ${usagePromptStore.name}` : ""}؟
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="gap-2 sm:justify-start">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => handleUsageDecision(false)}
+              >
+                لا
+              </Button>
+              <Button type="button" onClick={() => handleUsageDecision(true)}>
+                نعم
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
