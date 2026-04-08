@@ -426,7 +426,8 @@ export default function CardClient({
           </CardContent>
         </Card>
 
-        <div className="border-t-2 border-yellow-600/30 bg-gradient-to-br from-gray-900/95 via-gray-800/90 to-black p-5 md:p-6">
+        {!isExpired && (
+          <div className="border-t-2 border-yellow-600/30 bg-gradient-to-br from-gray-900/95 via-gray-800/90 to-black p-5 md:p-6">
           <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold text-yellow-400/90">
             <User className="h-4 w-4" />
             بيانات العضو
@@ -500,7 +501,8 @@ export default function CardClient({
               تُعرض فقط البيانات المسجلة في حسابك
             </p>
           )}
-        </div>
+          </div>
+        )}
 
         {!isExpired &&
           (groupedStores.length === 0 ? (

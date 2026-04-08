@@ -175,6 +175,63 @@ export async function getUsageStateMap(userId: string, subscriptionId: string) {
   }
 }
 
+export async function getUserUsages(userId: string) {
+  await connectToDatabase();
+
+  try {
+    const usages = await Usage.find({ user: userId })
+      .populate({
+        path: "store",
+        select: "name place",
+        populate: {
+          path: "place",
+          select: "name",
+        },
+      })
+      .sort({ usedAt: -1, createdAt: -1 })
+      .lean();
+
+    const normalizedUsages = usages.map((usage) => {
+      const usageData = usage as {
+        _id: unknown;
+        store?: {
+          name?: string;
+          place?: {
+            name?: string;
+          };
+        } | null;
+        usedAt?: Date | string;
+        usedDiscount?: boolean;
+        usageDate?: string;
+      };
+
+      return {
+        _id: String(usageData._id),
+        storeName: usageData.store?.name || "-",
+        placeName: usageData.store?.place?.name || "-",
+        usedAt: usageData.usedAt
+          ? new Date(usageData.usedAt).toISOString()
+          : null,
+        usedDiscount: Boolean(usageData.usedDiscount),
+        usageDate: usageData.usageDate || "",
+      };
+    });
+
+    return {
+      success: true,
+      message: "تم جلب استخدامات العميل بنجاح",
+      data: normalizedUsages,
+    };
+  } catch (error) {
+    console.error(error);
+    return {
+      success: false,
+      message: "فشل في جلب استخدامات العميل",
+      data: [],
+    };
+  }
+}
+
 export async function checkUsageAllowed(
   userId: string,
   subscriptionId: string,
