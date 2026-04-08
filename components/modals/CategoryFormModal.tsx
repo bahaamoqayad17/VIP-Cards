@@ -67,8 +67,8 @@ export default function CategoryFormModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
+      <DialogContent className="w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] sm:max-w-[425px]">
+        <DialogHeader className="pr-8 text-right sm:pr-10">
           <DialogTitle>
             {editingCategory ? "تعديل نوع مكان" : "إضافة نوع مكان جديد"}
           </DialogTitle>
@@ -79,7 +79,7 @@ export default function CategoryFormModal({
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmitForm)}>
-          <div className="grid gap-4 py-4">
+          <div className="grid gap-4 py-3 sm:py-4">
             <div className="grid gap-2">
               <Label htmlFor="name">اسم الفئة</Label>
               <Input
@@ -133,10 +133,15 @@ export default function CategoryFormModal({
               variant="outline"
               onClick={onClose}
               disabled={isLoading}
+              className="w-full sm:w-auto"
             >
               إلغاء
             </Button>
-            <Button type="submit" disabled={isLoading}>
+            <Button
+              type="submit"
+              disabled={isLoading}
+              className="w-full sm:w-auto"
+            >
               {isLoading
                 ? "جاري الحفظ..."
                 : editingCategory

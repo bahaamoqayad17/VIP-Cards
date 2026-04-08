@@ -121,8 +121,8 @@ export default function StoreFormModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
+      <DialogContent className="w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] sm:max-w-[425px]">
+        <DialogHeader className="pr-8 text-right sm:pr-10">
           <DialogTitle>
             {editingStore ? "تعديل المحل" : "إضافة محل جديد"}
           </DialogTitle>
@@ -133,7 +133,7 @@ export default function StoreFormModal({
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmitForm)}>
-          <div className="grid gap-4 py-4">
+          <div className="grid gap-4 py-3 sm:py-4">
             <div className="grid gap-2">
               <Label htmlFor="name">اسم المحل</Label>
               <Input
@@ -160,7 +160,7 @@ export default function StoreFormModal({
                 onValueChange={(value) => setValue("place", value, { shouldValidate: true })}
               >
                 <SelectTrigger
-                  className={errors.place ? "border-destructive" : ""}
+                  className={errors.place ? "w-full border-destructive" : "w-full"}
                 >
                   <SelectValue placeholder="اختر المكان" />
                 </SelectTrigger>
@@ -190,7 +190,9 @@ export default function StoreFormModal({
                 onValueChange={(value) => setValue("category", value, { shouldValidate: true })}
               >
                 <SelectTrigger
-                  className={errors.category ? "border-destructive" : ""}
+                  className={
+                    errors.category ? "w-full border-destructive" : "w-full"
+                  }
                 >
                   <SelectValue placeholder="اختر نوع المحل" />
                 </SelectTrigger>
@@ -272,10 +274,15 @@ export default function StoreFormModal({
               variant="outline"
               onClick={onClose}
               disabled={isLoading}
+              className="w-full sm:w-auto"
             >
               إلغاء
             </Button>
-            <Button type="submit" disabled={isLoading}>
+            <Button
+              type="submit"
+              disabled={isLoading}
+              className="w-full sm:w-auto"
+            >
               {isLoading
                 ? "جاري الحفظ..."
                 : editingStore
@@ -288,4 +295,3 @@ export default function StoreFormModal({
     </Dialog>
   );
 }
-

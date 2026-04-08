@@ -64,8 +64,8 @@ export default function PlaceFormModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
+      <DialogContent className="w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] sm:max-w-[425px]">
+        <DialogHeader className="pr-8 text-right sm:pr-10">
           <DialogTitle>
             {editingPlace ? "تعديل المكان" : "إضافة مكان جديد"}
           </DialogTitle>
@@ -76,7 +76,7 @@ export default function PlaceFormModal({
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmitForm)}>
-          <div className="grid gap-4 py-4">
+          <div className="grid gap-4 py-3 sm:py-4">
             <div className="grid gap-2">
               <Label htmlFor="name">اسم المكان</Label>
               <Input
@@ -104,10 +104,15 @@ export default function PlaceFormModal({
               variant="outline"
               onClick={onClose}
               disabled={isLoading}
+              className="w-full sm:w-auto"
             >
               إلغاء
             </Button>
-            <Button type="submit" disabled={isLoading}>
+            <Button
+              type="submit"
+              disabled={isLoading}
+              className="w-full sm:w-auto"
+            >
               {isLoading ? "جاري الحفظ..." : editingPlace ? "تحديث" : "إضافة"}
             </Button>
           </DialogFooter>
