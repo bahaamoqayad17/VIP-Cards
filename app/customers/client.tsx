@@ -6,7 +6,7 @@ import DataTable from "@/components/DataTable";
 import { UserType } from "@/models/User";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Edit, Trash } from "lucide-react";
+import { Ban, Edit, Eye, RefreshCcw, Trash } from "lucide-react";
 import {
   createCustomer,
   deleteUser,
@@ -14,9 +14,12 @@ import {
 } from "@/actions/user-actions";
 import UserFormModal from "@/components/modals/UserFormModal";
 import { toast } from "sonner";
-import { createSubscription } from "@/actions/subscription-actions";
+import {
+  createSubscription,
+  renewSubscription,
+  stopSubscription,
+} from "@/actions/subscription-actions";
 import VIPCardModal from "@/components/modals/VIPCardModal";
-import { Eye } from "lucide-react";
 
 interface CustomersClientProps {
   customers: {
@@ -38,6 +41,9 @@ export default function CustomersClient({
   const [loading, setLoading] = useState(false);
   const [isCardModalOpen, setIsCardModalOpen] = useState(false);
   const [viewingUser, setViewingUser] = useState<UserType | null>(null);
+  const [subscriptionActionKey, setSubscriptionActionKey] = useState<
+    string | null
+  >(null);
 
   const handleSubmitCustomer = async (data: {
     name: string;
@@ -45,57 +51,64 @@ export default function CustomersClient({
     id_number?: string;
   }): Promise<{ success: boolean; message: string }> => {
     setLoading(true);
+
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let response: any;
+      let response: {
+        success: boolean;
+        message?: string;
+        data?: UserType;
+      };
+
       if (editingUser) {
-        // Update existing customer
         response = await updateCustomer(String(editingUser._id), data);
+
         if (response.success && response.data) {
           setCustomers(
             customers.map((customer) =>
-              customer._id === editingUser._id ? response.data : customer
+              customer._id === editingUser._id ? response.data! : customer
             )
           );
           toast.success("تم تحديث العميل بنجاح!");
           setIsModalOpen(false);
           setEditingUser(null);
-          return { success: true, message: response.message };
-        } else {
-          toast.error(response.message || "فشل في تحديث العميل");
-          return {
-            success: false,
-            message: response.message || "فشل في تحديث العميل",
-          };
+          return { success: true, message: response.message || "" };
         }
-      } else {
-        // Create new customer
-        response = await createCustomer(data);
-        if (response.success && response.data) {
-          try {
-            const subscriptionResponse = await createSubscription({
-              userId: String(response.data._id),
-            });
-            if (subscriptionResponse.success) {
-              toast.success("تم إضافة العميل والاشتراك بنجاح!");
-            } else {
-              toast.warning("تم إضافة العميل ولكن فشل في إنشاء الاشتراك");
-            }
-          } catch (error) {
-            console.error("Error creating subscription:", error);
+
+        toast.error(response.message || "فشل في تحديث العميل");
+        return {
+          success: false,
+          message: response.message || "فشل في تحديث العميل",
+        };
+      }
+
+      response = await createCustomer(data);
+
+      if (response.success && response.data) {
+        try {
+          const subscriptionResponse = await createSubscription({
+            userId: String(response.data._id),
+          });
+
+          if (subscriptionResponse.success) {
+            toast.success("تم إضافة العميل والاشتراك بنجاح!");
+          } else {
             toast.warning("تم إضافة العميل ولكن فشل في إنشاء الاشتراك");
           }
-          setCustomers([...customers, response.data]);
-          setIsModalOpen(false);
-          return { success: true, message: response.message };
-        } else {
-          toast.error(response.message || "فشل في إضافة العميل");
-          return {
-            success: false,
-            message: response.message || "فشل في إضافة العميل",
-          };
+        } catch (error) {
+          console.error("Error creating subscription:", error);
+          toast.warning("تم إضافة العميل ولكن فشل في إنشاء الاشتراك");
         }
+
+        setCustomers([...customers, response.data]);
+        setIsModalOpen(false);
+        return { success: true, message: response.message || "" };
       }
+
+      toast.error(response.message || "فشل في إضافة العميل");
+      return {
+        success: false,
+        message: response.message || "فشل في إضافة العميل",
+      };
     } catch (error) {
       console.error("Error submitting customer:", error);
       toast.error("حدث خطأ أثناء العملية");
@@ -139,6 +152,47 @@ export default function CustomersClient({
   const handleViewCard = (customer: UserType) => {
     setViewingUser(customer);
     setIsCardModalOpen(true);
+  };
+
+  const handleStopSubscription = async (customer: UserType) => {
+    const confirmed = window.confirm(`هل تريد إيقاف اشتراك ${customer.name}؟`);
+    if (!confirmed) return;
+
+    const actionKey = `stop-${customer._id}`;
+    setSubscriptionActionKey(actionKey);
+
+    try {
+      const response = await stopSubscription(String(customer._id));
+      if (response.success) {
+        toast.success(response.message || "تم إيقاف الاشتراك بنجاح");
+      } else {
+        toast.error(response.message || "فشل في إيقاف الاشتراك");
+      }
+    } catch (error) {
+      console.error("Error stopping subscription:", error);
+      toast.error("حدث خطأ أثناء إيقاف الاشتراك");
+    } finally {
+      setSubscriptionActionKey(null);
+    }
+  };
+
+  const handleRenewSubscription = async (customer: UserType) => {
+    const actionKey = `renew-${customer._id}`;
+    setSubscriptionActionKey(actionKey);
+
+    try {
+      const response = await renewSubscription(String(customer._id));
+      if (response.success) {
+        toast.success(response.message || "تم تجديد الاشتراك بنجاح");
+      } else {
+        toast.error(response.message || "فشل في تجديد الاشتراك");
+      }
+    } catch (error) {
+      console.error("Error renewing subscription:", error);
+      toast.error("حدث خطأ أثناء تجديد الاشتراك");
+    } finally {
+      setSubscriptionActionKey(null);
+    }
   };
 
   const columns = [
@@ -190,12 +244,18 @@ export default function CustomersClient({
     columnHelper.display({
       id: "actions",
       cell: (info) => {
+        const customer = info.row.original;
+        const isStopping =
+          subscriptionActionKey === `stop-${String(customer._id)}`;
+        const isRenewing =
+          subscriptionActionKey === `renew-${String(customer._id)}`;
+
         return (
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button
               variant="outline"
               size="sm"
-              onClick={() => handleViewCard(info.row.original)}
+              onClick={() => handleViewCard(customer)}
               title="عرض البطاقة"
             >
               <Eye className="h-4 w-4" />
@@ -203,7 +263,7 @@ export default function CustomersClient({
             <Button
               variant="outline"
               size="sm"
-              onClick={() => handleEditCustomer(info.row.original)}
+              onClick={() => handleEditCustomer(customer)}
               title="تعديل"
             >
               <Edit className="h-4 w-4" />
@@ -211,9 +271,25 @@ export default function CustomersClient({
             <Button
               variant="outline"
               size="sm"
-              onClick={() =>
-                handleDeleteCustomer(String(info.row.original._id))
-              }
+              onClick={() => handleStopSubscription(customer)}
+              title="إيقاف الاشتراك"
+              disabled={isStopping || isRenewing}
+            >
+              <Ban className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleRenewSubscription(customer)}
+              title="تجديد الاشتراك"
+              disabled={isStopping || isRenewing}
+            >
+              <RefreshCcw className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleDeleteCustomer(String(customer._id))}
               title="حذف"
             >
               <Trash className="h-4 w-4" />
@@ -229,8 +305,7 @@ export default function CustomersClient({
     <div className="p-6">
       <DataTable
         data={customers}
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        columns={columns as any}
+        columns={columns}
         title="العملاء"
         addButtonText="إضافة عميل"
         onAdd={handleAddCustomer}

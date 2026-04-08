@@ -92,8 +92,8 @@ export default function VIPCardModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] sm:max-w-[600px]">
+        <DialogHeader className="pr-8 text-right sm:pr-10">
           <DialogTitle>بطاقة VIP - {user.name}</DialogTitle>
           <DialogDescription>
             عرض بطاقة العميل وروابط المشاركة
@@ -121,7 +121,7 @@ export default function VIPCardModal({
             {/* Expiry notice at bottom */}
             <div className="absolute bottom-4 left-0 right-0 flex justify-center">
               <p className="bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-semibold">
-                صالحة لمدة شهرين
+                صالحة لمدة شهر واحد
               </p>
             </div>
           </div>
@@ -129,7 +129,7 @@ export default function VIPCardModal({
           {/* User Details */}
           <div className="bg-gray-50 p-4 rounded-lg space-y-3">
             <h3 className="font-semibold text-lg mb-3">معلومات العميل</h3>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <p className="text-sm text-gray-600">الاسم</p>
                 <p className="font-semibold">{user.name}</p>
@@ -153,7 +153,7 @@ export default function VIPCardModal({
           ) : subscription ? (
             <div className="bg-blue-50 p-4 rounded-lg space-y-3">
               <h3 className="font-semibold text-lg mb-3">معلومات الاشتراك</h3>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
                   <p className="text-sm text-gray-600">تاريخ البدء</p>
                   <p className="font-semibold">
@@ -186,7 +186,7 @@ export default function VIPCardModal({
           {/* Share Link */}
           <div className="space-y-2">
             <label className="text-sm font-medium">رابط البطاقة</label>
-            <div className="flex gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row">
               <Input
                 value={cardLink}
                 readOnly
@@ -197,7 +197,7 @@ export default function VIPCardModal({
                 onClick={handleCopyLink}
                 variant="outline"
                 size="icon"
-                className="shrink-0"
+                className="h-10 w-full shrink-0 sm:h-9 sm:w-9"
               >
                 {copied ? (
                   <Check className="h-4 w-4 text-green-600" />
@@ -209,7 +209,7 @@ export default function VIPCardModal({
                 onClick={() => router.push(`${cardLink}`)}
                 variant="outline"
                 size="icon"
-                className="shrink-0"
+                className="h-10 w-full shrink-0 sm:h-9 sm:w-9"
               >
                 <ExternalLink className="h-4 w-4" />
               </Button>
@@ -221,7 +221,7 @@ export default function VIPCardModal({
         </div>
 
         <div className="flex justify-end mt-6">
-          <Button onClick={onClose} variant="outline">
+          <Button onClick={onClose} variant="outline" className="w-full sm:w-auto">
             إغلاق
           </Button>
         </div>

@@ -24,6 +24,10 @@ const usageSchema = new mongoose.Schema(
       required: true,
       default: Date.now,
     },
+    usedDiscount: {
+      type: Boolean,
+      required: true,
+    },
     // Store the date (YYYY-MM-DD) for easy daily querying
     usageDate: {
       type: String,
@@ -42,6 +46,7 @@ export type UsageType = Omit<InferSchemaType<typeof usageSchema>, ""> & {
   subscription: mongoose.Types.ObjectId | string;
   store: mongoose.Types.ObjectId | string;
   usedAt: Date;
+  usedDiscount: boolean;
   usageDate: string;
   letter: string;
   createdAt: Date;
