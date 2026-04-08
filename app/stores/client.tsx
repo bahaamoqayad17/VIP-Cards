@@ -227,7 +227,7 @@ export default function StoresClient({
   ];
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       <DataTable
         data={stores}
         // eslint-disable-next-line @typescript-eslint/no-explicit-any

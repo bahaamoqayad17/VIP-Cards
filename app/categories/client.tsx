@@ -178,7 +178,7 @@ export default function CategoriesClient({
   ];
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       <DataTable
         data={categories}
         // eslint-disable-next-line @typescript-eslint/no-explicit-any

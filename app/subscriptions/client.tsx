@@ -103,7 +103,7 @@ export default function SubscriptionsClient({
   ];
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       <DataTable
         data={subscriptions}
         // eslint-disable-next-line @typescript-eslint/no-explicit-any

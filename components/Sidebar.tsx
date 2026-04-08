@@ -4,16 +4,17 @@ import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  LayoutDashboard,
-  Users,
-  Store,
-  CreditCard,
-  Menu,
-  LogOut,
   ChevronLeft,
   ChevronRight,
+  CreditCard,
+  LayoutDashboard,
+  LogOut,
   Map,
+  Menu,
+  Store,
   Tag,
+  Users,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -82,12 +83,11 @@ function SidebarContent({
 }: SidebarContentProps) {
   return (
     <div className={cn("flex h-full flex-col", isMobile && "w-full")}>
-      {/* Header */}
       <div className="flex h-16 items-center justify-between border-b px-4">
         <div
           className={cn(
             "flex items-center gap-2",
-            isCollapsed && !isMobile && "justify-center"
+            isCollapsed && !isMobile && "justify-center",
           )}
         >
           <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
@@ -100,6 +100,7 @@ function SidebarContent({
             </div>
           )}
         </div>
+
         {!isMobile && (
           <Button
             variant="ghost"
@@ -116,7 +117,6 @@ function SidebarContent({
         )}
       </div>
 
-      {/* Navigation */}
       <ScrollArea className="flex-1">
         <nav className="space-y-1 p-4">
           {navItems.map((item) => {
@@ -134,7 +134,7 @@ function SidebarContent({
                   isActive
                     ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-                  isCollapsed && !isMobile && "justify-center px-2"
+                  isCollapsed && !isMobile && "justify-center px-2",
                 )}
               >
                 {(!isCollapsed || isMobile) && (
@@ -150,7 +150,7 @@ function SidebarContent({
                 <Icon
                   className={cn(
                     "size-5 shrink-0",
-                    isCollapsed && !isMobile && "mx-auto"
+                    isCollapsed && !isMobile && "mx-auto",
                   )}
                 />
               </Link>
@@ -159,19 +159,18 @@ function SidebarContent({
         </nav>
       </ScrollArea>
 
-      {/* Footer */}
       <div className="border-t p-4">
         <Button
           variant="ghost"
           className={cn(
             "w-full justify-start gap-3 text-muted-foreground hover:text-destructive",
-            isCollapsed && !isMobile && "justify-center px-2"
+            isCollapsed && !isMobile && "justify-center px-2",
           )}
         >
           <LogOut
             className={cn(
               "size-5 shrink-0",
-              isCollapsed && !isMobile && "mx-auto"
+              isCollapsed && !isMobile && "mx-auto",
             )}
           />
           {(!isCollapsed || isMobile) && <span>تسجيل الخروج</span>}
@@ -188,34 +187,34 @@ export default function Sidebar({ className, children }: SidebarProps) {
 
   return (
     <div className="flex min-h-screen">
-      {/* Mobile Sidebar */}
       <Sheet open={isMobileOpen} onOpenChange={setIsMobileOpen}>
         <SheetTrigger asChild>
           <Button
             variant="ghost"
             size="icon"
-            className="fixed left-4 top-4 z-40 lg:hidden"
+            className="fixed right-4 top-4 z-40 border bg-background/90 shadow-sm backdrop-blur lg:hidden"
           >
-            <Menu className="size-5" />
-            <span className="sr-only">فتح القائمة</span>
+            {isMobileOpen ? <X className="size-5" /> : <Menu className="size-5" />}
+            <span className="sr-only">
+              {isMobileOpen ? "إغلاق القائمة" : "فتح القائمة"}
+            </span>
           </Button>
         </SheetTrigger>
+
         <SheetContent side="right" className="w-[280px] p-0">
           <SidebarContent
             isMobile
-            isCollapsed={false}
             pathname={pathname}
             onNavClick={() => setIsMobileOpen(false)}
           />
         </SheetContent>
       </Sheet>
 
-      {/* Desktop Sidebar */}
       <aside
         className={cn(
           "fixed right-0 top-0 z-30 hidden h-screen border-l bg-background transition-all duration-300 lg:block",
           isCollapsed ? "w-16" : "w-64",
-          className
+          className,
         )}
       >
         <SidebarContent
@@ -225,16 +224,16 @@ export default function Sidebar({ className, children }: SidebarProps) {
         />
       </aside>
 
-      {/* Spacer for desktop sidebar */}
       <div
         className={cn(
           "hidden transition-all duration-300 lg:block",
-          isCollapsed ? "w-16" : "w-64"
+          isCollapsed ? "w-16" : "w-64",
         )}
       />
 
-      {/* Main Content Area */}
-      <main className="flex-1 min-w-0 p-8">{children}</main>
+      <main className="min-w-0 flex-1 px-4 pb-4 pt-20 sm:px-6 sm:pb-6 lg:p-8 lg:pt-8">
+        {children}
+      </main>
     </div>
   );
 }
