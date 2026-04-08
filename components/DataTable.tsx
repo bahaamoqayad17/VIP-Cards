@@ -2,16 +2,30 @@
 
 import React, { FC, useState } from "react";
 import {
-  flexRender,
+  ColumnDef,
+  SortingState,
   Table as TTableProps,
+  flexRender,
   getCoreRowModel,
   getFilteredRowModel,
   getPaginationRowModel,
   getSortedRowModel,
-  SortingState,
   useReactTable,
-  ColumnDef,
 } from "@tanstack/react-table";
+import {
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronUp,
+  ChevronsLeft,
+  ChevronsRight,
+  Plus,
+  Search,
+  X,
+} from "lucide-react";
+
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -19,8 +33,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { FieldWrap, Mounted } from "@/components/ui/field-wrap";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -29,7 +42,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { FieldWrap, Mounted } from "@/components/ui/field-wrap";
 import {
   Table,
   TableBody,
@@ -39,21 +51,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Search,
-  ChevronUp,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
-  Plus,
-  X,
-} from "lucide-react";
 
-// Table Template Components
 interface ITableHeaderTemplateProps {
-  table: TTableProps<any>;
+  table: TTableProps<unknown>;
 }
 
 export const TableHeaderTemplate: FC<ITableHeaderTemplateProps> = ({
@@ -67,22 +67,21 @@ export const TableHeaderTemplate: FC<ITableHeaderTemplateProps> = ({
             <TableHead key={header.id}>
               {header.isPlaceholder ? null : (
                 <div
-                  key={header.id}
                   aria-hidden="true"
-                  {...{
-                    className: header.column.getCanSort()
-                      ? "cursor-pointer select-none flex items-center"
-                      : "",
-                    onClick: header.column.getToggleSortingHandler(),
-                  }}
+                  className={
+                    header.column.getCanSort()
+                      ? "flex cursor-pointer items-center select-none"
+                      : ""
+                  }
+                  onClick={header.column.getToggleSortingHandler()}
                 >
                   {flexRender(
                     header.column.columnDef.header,
                     header.getContext()
                   )}
                   {{
-                    asc: <ChevronUp className="h-4 w-4 ml-1.5" />,
-                    desc: <ChevronDown className="h-4 w-4 ml-1.5" />,
+                    asc: <ChevronUp className="ml-1.5 h-4 w-4" />,
+                    desc: <ChevronDown className="ml-1.5 h-4 w-4" />,
                   }[header.column.getIsSorted() as string] ?? null}
                 </div>
               )}
@@ -95,7 +94,7 @@ export const TableHeaderTemplate: FC<ITableHeaderTemplateProps> = ({
 };
 
 interface ITableBodyTemplateProps {
-  table: TTableProps<any>;
+  table: TTableProps<unknown>;
 }
 
 export const TableBodyTemplate: FC<ITableBodyTemplateProps> = ({ table }) => {
@@ -115,7 +114,7 @@ export const TableBodyTemplate: FC<ITableBodyTemplateProps> = ({ table }) => {
 };
 
 interface ITableFooterTemplateProps {
-  table: TTableProps<any>;
+  table: TTableProps<unknown>;
 }
 
 export const TableFooterTemplate: FC<ITableFooterTemplateProps> = ({
@@ -129,22 +128,21 @@ export const TableFooterTemplate: FC<ITableFooterTemplateProps> = ({
             <TableHead key={header.id}>
               {header.isPlaceholder ? null : (
                 <div
-                  key={header.id}
                   aria-hidden="true"
-                  {...{
-                    className: header.column.getCanSort()
-                      ? "cursor-pointer select-none flex items-center"
-                      : "",
-                    onClick: header.column.getToggleSortingHandler(),
-                  }}
+                  className={
+                    header.column.getCanSort()
+                      ? "flex cursor-pointer items-center select-none"
+                      : ""
+                  }
+                  onClick={header.column.getToggleSortingHandler()}
                 >
                   {flexRender(
                     header.column.columnDef.footer,
                     header.getContext()
                   )}
                   {{
-                    asc: <ChevronUp className="h-4 w-4 ml-1.5" />,
-                    desc: <ChevronDown className="h-4 w-4 ml-1.5" />,
+                    asc: <ChevronUp className="ml-1.5 h-4 w-4" />,
+                    desc: <ChevronDown className="ml-1.5 h-4 w-4" />,
                   }[header.column.getIsSorted() as string] ?? null}
                 </div>
               )}
@@ -157,23 +155,21 @@ export const TableFooterTemplate: FC<ITableFooterTemplateProps> = ({
 };
 
 interface ITableTemplateProps {
-  table: TTableProps<any>;
+  table: TTableProps<unknown>;
   hasHeader?: boolean;
   hasFooter?: boolean;
   className?: string;
   children?: React.ReactNode;
 }
 
-const TableTemplate: FC<ITableTemplateProps> = (props) => {
-  const {
-    children,
-    hasHeader = true,
-    hasFooter = true,
-    table,
-    className,
-    ...rest
-  } = props;
-
+const TableTemplate: FC<ITableTemplateProps> = ({
+  children,
+  hasHeader = true,
+  hasFooter = true,
+  table,
+  className,
+  ...rest
+}) => {
   return (
     <Mounted>
       <Table className={className} {...rest}>
@@ -190,90 +186,103 @@ const TableTemplate: FC<ITableTemplateProps> = (props) => {
 };
 
 interface ITableCardFooterTemplateProps {
-  table: TTableProps<any>;
+  table: TTableProps<unknown>;
 }
 
 export const TableCardFooterTemplate: FC<ITableCardFooterTemplateProps> = ({
   table,
 }) => {
+  const pageCount = Math.max(table.getPageCount(), 1);
+  const pageIndex = table.getState().pagination.pageIndex + 1;
+  const filteredRowsCount = table.getFilteredRowModel().rows.length;
+
   return (
-    <CardFooter>
-      <div className="flex items-center justify-between w-full">
-        <div className="flex items-center gap-2">
+    <CardFooter className="mt-auto border-t px-4 pt-4 sm:px-6">
+      <div className="flex w-full flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+          <span className="text-sm text-muted-foreground">
+            {filteredRowsCount} عنصر
+          </span>
           <Select
             value={table.getState().pagination.pageSize.toString()}
             onValueChange={(value) => {
               table.setPageSize(Number(value));
             }}
-            defaultValue="10"
           >
-            <SelectTrigger className="w-fit">
-              <SelectValue placeholder="Show items" />
+            <SelectTrigger className="w-full sm:w-[9rem]">
+              <SelectValue placeholder="عدد العناصر" />
             </SelectTrigger>
             <SelectContent>
               {[5, 10, 20, 30, 40, 50].map((pageSize) => (
                 <SelectItem key={pageSize} value={pageSize.toString()}>
-                  Show {pageSize}
+                  عرض {pageSize}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
-            variant="outline"
-            size="sm"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-          <Button
-            onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-            disabled={!table.getCanNextPage()}
-            variant="outline"
-            size="sm"
-          >
-            <ChevronsRight className="h-4 w-4" />
-          </Button>
-          <span className="flex items-center gap-1">
-            <div>الصفحة</div>
-            <strong>
-              <Input
-                value={table.getState().pagination.pageIndex + 1}
-                onChange={(e) => {
-                  const page = e.target.value ? Number(e.target.value) - 1 : 0;
-                  table.setPageIndex(page);
-                }}
-                className="inline-flex !w-12 text-center"
-                name="page"
-              />{" "}
-              من {table.getPageCount()}
-            </strong>
-          </span>
-          <Button
-            onClick={() => table.setPageIndex(0)}
-            disabled={!table.getCanPreviousPage()}
-            variant="outline"
-            size="sm"
-          >
-            <ChevronsLeft className="h-4 w-4" />
-          </Button>
-          <Button
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
-            variant="outline"
-            size="sm"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
+
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+          <div className="text-sm text-muted-foreground">
+            الصفحة {pageIndex} من {pageCount}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              onClick={() => table.setPageIndex(0)}
+              disabled={!table.getCanPreviousPage()}
+              variant="outline"
+              size="sm"
+            >
+              <ChevronsLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              onClick={() => table.previousPage()}
+              disabled={!table.getCanPreviousPage()}
+              variant="outline"
+              size="sm"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Input
+              type="number"
+              min={1}
+              max={pageCount}
+              value={pageIndex}
+              onChange={(e) => {
+                const nextPage = Number(e.target.value);
+
+                if (Number.isNaN(nextPage)) return;
+
+                const boundedPage = Math.min(Math.max(nextPage, 1), pageCount);
+                table.setPageIndex(boundedPage - 1);
+              }}
+              className="h-8 w-20 text-center"
+              name="page"
+              aria-label="رقم الصفحة"
+            />
+            <Button
+              onClick={() => table.nextPage()}
+              disabled={!table.getCanNextPage()}
+              variant="outline"
+              size="sm"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+            <Button
+              onClick={() => table.setPageIndex(pageCount - 1)}
+              disabled={!table.getCanNextPage()}
+              variant="outline"
+              size="sm"
+            >
+              <ChevronsRight className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </div>
     </CardFooter>
   );
 };
 
-// Main DataTable Component
 interface DataTableProps<TData> {
   data: TData[];
   columns: ColumnDef<TData>[];
@@ -289,10 +298,10 @@ function DataTable<TData>({
   title = "Data Table",
   className,
   onAdd,
-  addButtonText = "إضافة بطيخ",
+  addButtonText = "إضافة عنصر",
 }: DataTableProps<TData>) {
   const [sorting, setSorting] = useState<SortingState>([]);
-  const [globalFilter, setGlobalFilter] = useState<string>("");
+  const [globalFilter, setGlobalFilter] = useState("");
 
   const table = useReactTable({
     data,
@@ -316,18 +325,23 @@ function DataTable<TData>({
   return (
     <Card className={`h-full ${className || ""}`}>
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-2">
             <CardTitle>{title}</CardTitle>
             <Badge
               variant="outline"
-              className="bg-blue-100 text-blue-800 rounded-full text-xs"
+              className="rounded-full bg-blue-100 text-xs text-blue-800"
             >
-              {table.getFilteredRowModel().rows.length} عناصر
+              {table.getFilteredRowModel().rows.length} عنصر
             </Badge>
           </div>
           {onAdd && (
-            <Button onClick={onAdd} variant="outline" size="sm">
+            <Button
+              onClick={onAdd}
+              variant="outline"
+              size="sm"
+              className="w-full sm:w-auto"
+            >
               <Plus className="h-4 w-4" />
               {addButtonText}
             </Button>
@@ -335,11 +349,11 @@ function DataTable<TData>({
         </div>
         <div className="mt-4">
           <FieldWrap
-            firstSuffix={<Search className="h-4 w-4 mx-2" />}
+            firstSuffix={<Search className="mx-2 h-4 w-4" />}
             lastSuffix={
               globalFilter && (
                 <X
-                  className="h-4 w-4 mx-2 cursor-pointer text-red-500"
+                  className="mx-2 h-4 w-4 cursor-pointer text-red-500"
                   onClick={() => {
                     setGlobalFilter("");
                   }}
@@ -350,20 +364,23 @@ function DataTable<TData>({
             <Input
               id="table-search"
               name="table-search"
-              placeholder={"ابحث"}
-              value={globalFilter ?? ""}
+              placeholder="ابحث"
+              value={globalFilter}
               onChange={(e) => setGlobalFilter(e.target.value)}
             />
           </FieldWrap>
         </div>
       </CardHeader>
-      <CardContent className="overflow-auto">
+
+      <CardContent className="overflow-x-auto overflow-y-visible">
         <TableTemplate
-          className="table-fixed max-md:min-w-[70rem]"
-          table={table}
+          className="table-fixed min-w-[40rem] md:min-w-full"
+          table={table as TTableProps<unknown>}
+          hasFooter={false}
         />
       </CardContent>
-      <TableCardFooterTemplate table={table} />
+
+      <TableCardFooterTemplate table={table as TTableProps<unknown>} />
     </Card>
   );
 }

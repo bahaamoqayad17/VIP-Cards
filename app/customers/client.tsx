@@ -7,6 +7,7 @@ import {
   Edit,
   Eye,
   History,
+  Loader2,
   RefreshCcw,
   Trash,
 } from "lucide-react";
@@ -89,7 +90,7 @@ export default function CustomersClient({
   const [subscriptionConfirmAction, setSubscriptionConfirmAction] =
     useState<SubscriptionConfirmAction>(null);
   const [isUsagesModalOpen, setIsUsagesModalOpen] = useState(false);
-  const [usageLoadingKey, setUsageLoadingKey] = useState<string | null>(null);
+  const [isUsagesLoading, setIsUsagesLoading] = useState(false);
   const [usageModalUser, setUsageModalUser] = useState<UserType | null>(null);
   const [userUsages, setUserUsages] = useState<UserUsageItem[]>([]);
 
@@ -262,8 +263,10 @@ export default function CustomersClient({
   };
 
   const handleViewUsages = async (customer: UserType) => {
-    const loadingKey = `usage-${customer._id}`;
-    setUsageLoadingKey(loadingKey);
+    setUsageModalUser(customer);
+    setUserUsages([]);
+    setIsUsagesModalOpen(true);
+    setIsUsagesLoading(true);
 
     try {
       const response = await getUserUsages(String(customer._id));
@@ -273,14 +276,12 @@ export default function CustomersClient({
         return;
       }
 
-      setUsageModalUser(customer);
       setUserUsages(response.data);
-      setIsUsagesModalOpen(true);
     } catch (error) {
       console.error("Error fetching user usages:", error);
       toast.error("حدث خطأ أثناء جلب الاستخدامات");
     } finally {
-      setUsageLoadingKey(null);
+      setIsUsagesLoading(false);
     }
   };
 
@@ -338,8 +339,6 @@ export default function CustomersClient({
           subscriptionActionKey === `stop-${String(customer._id)}`;
         const isRenewing =
           subscriptionActionKey === `renew-${String(customer._id)}`;
-        const isLoadingUsages =
-          usageLoadingKey === `usage-${String(customer._id)}`;
 
         return (
           <div className="flex flex-wrap gap-2">
@@ -356,7 +355,6 @@ export default function CustomersClient({
               size="sm"
               onClick={() => handleViewUsages(customer)}
               title="عرض الاستخدامات"
-              disabled={isLoadingUsages}
             >
               <History className="h-4 w-4" />
             </Button>
@@ -477,6 +475,7 @@ export default function CustomersClient({
         onOpenChange={(open) => {
           setIsUsagesModalOpen(open);
           if (!open) {
+            setIsUsagesLoading(false);
             setUsageModalUser(null);
             setUserUsages([]);
           }
@@ -495,7 +494,12 @@ export default function CustomersClient({
           </DialogHeader>
 
           <div className="max-h-[60vh] overflow-y-auto">
-            {userUsages.length === 0 ? (
+            {isUsagesLoading ? (
+              <div className="flex min-h-40 flex-col items-center justify-center gap-3 rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+                <Loader2 className="h-5 w-5 animate-spin" />
+                <span>جاري تحميل استخدامات العميل...</span>
+              </div>
+            ) : userUsages.length === 0 ? (
               <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
                 لا توجد استخدامات مسجلة لهذا العميل.
               </div>
