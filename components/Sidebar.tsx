@@ -7,6 +7,7 @@ import {
   ChevronLeft,
   ChevronRight,
   CreditCard,
+  History,
   LayoutDashboard,
   LogOut,
   Map,
@@ -58,6 +59,11 @@ const navItems: NavItem[] = [
     title: "الاشتراكات",
     href: "/subscriptions",
     icon: CreditCard,
+  },
+  {
+    title: "الاستخدامات",
+    href: "/usages",
+    icon: History,
   },
 ];
 

@@ -2,19 +2,9 @@
 
 import React, { useState } from "react";
 import { createColumnHelper } from "@tanstack/react-table";
-import {
-  Ban,
-  Edit,
-  Eye,
-  History,
-  Loader2,
-  RefreshCcw,
-  Trash,
-} from "lucide-react";
+import { Ban, Edit, Eye, RefreshCcw, Trash } from "lucide-react";
 import { toast } from "sonner";
 
-import DataTable from "@/components/DataTable";
-import { getUserUsages } from "@/actions/card-actions";
 import {
   createSubscription,
   renewSubscription,
@@ -25,6 +15,7 @@ import {
   deleteUser,
   updateCustomer,
 } from "@/actions/user-actions";
+import DataTable from "@/components/DataTable";
 import UserFormModal from "@/components/modals/UserFormModal";
 import VIPCardModal from "@/components/modals/VIPCardModal";
 import {
@@ -39,13 +30,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { UserType } from "@/models/User";
 
 interface CustomersClientProps {
@@ -54,15 +38,6 @@ interface CustomersClientProps {
     message: string;
     data: UserType[];
   };
-}
-
-interface UserUsageItem {
-  _id: string;
-  storeName: string;
-  placeName: string;
-  usedAt: string | null;
-  usedDiscount: boolean;
-  usageDate: string;
 }
 
 type SubscriptionConfirmAction =
@@ -89,10 +64,6 @@ export default function CustomersClient({
   >(null);
   const [subscriptionConfirmAction, setSubscriptionConfirmAction] =
     useState<SubscriptionConfirmAction>(null);
-  const [isUsagesModalOpen, setIsUsagesModalOpen] = useState(false);
-  const [isUsagesLoading, setIsUsagesLoading] = useState(false);
-  const [usageModalUser, setUsageModalUser] = useState<UserType | null>(null);
-  const [userUsages, setUserUsages] = useState<UserUsageItem[]>([]);
 
   const handleSubmitCustomer = async (data: {
     name: string;
@@ -262,77 +233,48 @@ export default function CustomersClient({
     await handleRenewSubscription(customer);
   };
 
-  const handleViewUsages = async (customer: UserType) => {
-    setUsageModalUser(customer);
-    setUserUsages([]);
-    setIsUsagesModalOpen(true);
-    setIsUsagesLoading(true);
-
-    try {
-      const response = await getUserUsages(String(customer._id));
-
-      if (!response.success) {
-        toast.error(response.message || "فشل في جلب الاستخدامات");
-        return;
-      }
-
-      setUserUsages(response.data);
-    } catch (error) {
-      console.error("Error fetching user usages:", error);
-      toast.error("حدث خطأ أثناء جلب الاستخدامات");
-    } finally {
-      setIsUsagesLoading(false);
-    }
-  };
-
   const columns = [
     columnHelper.accessor("name", {
-      cell: (info) => {
-        const name = info.getValue();
-        return (
-          <span className="font-semibold text-gray-900">{name || "-"}</span>
-        );
-      },
       header: "الاسم",
+      cell: (info) => (
+        <span className="font-semibold text-gray-900">
+          {info.getValue() || "-"}
+        </span>
+      ),
     }),
     columnHelper.accessor("mobile_number", {
-      cell: (info) => {
-        const mobile = info.getValue();
-        return <span className="text-sm text-gray-700">{mobile || "-"}</span>;
-      },
       header: "رقم الهاتف",
+      cell: (info) => (
+        <span className="text-sm text-gray-700">{info.getValue() || "-"}</span>
+      ),
     }),
     columnHelper.accessor("id_number", {
-      cell: (info) => {
-        const idNumber = info.getValue();
-        return <span className="text-sm text-gray-700">{idNumber || "-"}</span>;
-      },
       header: "رقم الهوية",
+      cell: (info) => (
+        <span className="text-sm text-gray-700">{info.getValue() || "-"}</span>
+      ),
     }),
     columnHelper.accessor("isActive", {
-      cell: (info) => {
-        const isActive = info.getValue();
-        return (
-          <Badge variant={isActive ? "default" : "secondary"}>
-            {isActive ? "نشط" : "غير نشط"}
-          </Badge>
-        );
-      },
       header: "الحالة",
+      cell: (info) => (
+        <Badge variant={info.getValue() ? "default" : "secondary"}>
+          {info.getValue() ? "نشط" : "غير نشط"}
+        </Badge>
+      ),
     }),
     columnHelper.accessor("createdAt", {
-      cell: (info) => {
-        const date = info.getValue();
-        return (
-          <span className="text-sm text-gray-500">
-            {date ? new Date(date).toLocaleDateString("ar-SA") : "-"}
-          </span>
-        );
-      },
       header: "تاريخ الإنشاء",
+      cell: (info) => (
+        <span className="text-sm text-gray-500">
+          {info.getValue()
+            ? new Date(info.getValue()).toLocaleDateString("ar-SA")
+            : "-"}
+        </span>
+      ),
     }),
     columnHelper.display({
       id: "actions",
+      header: "الإجراءات",
       cell: (info) => {
         const customer = info.row.original;
         const isStopping =
@@ -349,14 +291,6 @@ export default function CustomersClient({
               title="عرض البطاقة"
             >
               <Eye className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleViewUsages(customer)}
-              title="عرض الاستخدامات"
-            >
-              <History className="h-4 w-4" />
             </Button>
             <Button
               variant="outline"
@@ -395,7 +329,6 @@ export default function CustomersClient({
           </div>
         );
       },
-      header: "الإجراءات",
     }),
   ];
 
@@ -469,86 +402,6 @@ export default function CustomersClient({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      <Dialog
-        open={isUsagesModalOpen}
-        onOpenChange={(open) => {
-          setIsUsagesModalOpen(open);
-          if (!open) {
-            setIsUsagesLoading(false);
-            setUsageModalUser(null);
-            setUserUsages([]);
-          }
-        }}
-      >
-        <DialogContent className="max-w-3xl text-right">
-          <DialogHeader className="text-right">
-            <DialogTitle>
-              {usageModalUser
-                ? `استخدامات ${usageModalUser.name}`
-                : "استخدامات العميل"}
-            </DialogTitle>
-            <DialogDescription>
-              عرض جميع استخدامات العميل مع المحل والمكان وحالة استخدام الخصم.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="max-h-[60vh] overflow-y-auto">
-            {isUsagesLoading ? (
-              <div className="flex min-h-40 flex-col items-center justify-center gap-3 rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
-                <Loader2 className="h-5 w-5 animate-spin" />
-                <span>جاري تحميل استخدامات العميل...</span>
-              </div>
-            ) : userUsages.length === 0 ? (
-              <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
-                لا توجد استخدامات مسجلة لهذا العميل.
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {userUsages.map((usage) => (
-                  <div
-                    key={usage._id}
-                    className="rounded-lg border bg-card p-4 shadow-sm"
-                  >
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div>
-                        <p className="font-semibold text-foreground">
-                          {usage.storeName}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          {usage.placeName}
-                        </p>
-                      </div>
-                      <Badge
-                        variant={usage.usedDiscount ? "default" : "secondary"}
-                      >
-                        {usage.usedDiscount
-                          ? "استخدم الخصم"
-                          : "لم يستخدم الخصم"}
-                      </Badge>
-                    </div>
-
-                    <div className="mt-3 flex flex-wrap gap-4 text-sm text-muted-foreground">
-                      <span>
-                        تاريخ الاستخدام:{" "}
-                        {usage.usageDate
-                          ? new Date(usage.usageDate).toLocaleDateString("ar-SA")
-                          : "-"}
-                      </span>
-                      <span>
-                        وقت الاستخدام:{" "}
-                        {usage.usedAt
-                          ? new Date(usage.usedAt).toLocaleString("ar-SA")
-                          : "-"}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
