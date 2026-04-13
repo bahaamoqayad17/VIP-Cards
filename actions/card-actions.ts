@@ -232,6 +232,75 @@ export async function getUserUsages(userId: string) {
   }
 }
 
+export async function getAllUsages() {
+  await connectToDatabase();
+
+  try {
+    const usages = await Usage.find({})
+      .populate({
+        path: "user",
+        select: "name mobile_number id_number",
+      })
+      .populate({
+        path: "store",
+        select: "name place",
+        populate: {
+          path: "place",
+          select: "name",
+        },
+      })
+      .sort({ usedAt: -1, createdAt: -1 })
+      .lean();
+
+    const normalizedUsages = usages.map((usage) => {
+      const usageData = usage as {
+        _id: unknown;
+        user?: {
+          name?: string;
+          mobile_number?: string;
+          id_number?: string;
+        } | null;
+        store?: {
+          name?: string;
+          place?: {
+            name?: string;
+          };
+        } | null;
+        usedAt?: Date | string;
+        usedDiscount?: boolean;
+        usageDate?: string;
+      };
+
+      return {
+        _id: String(usageData._id),
+        userName: usageData.user?.name || "-",
+        mobileNumber: usageData.user?.mobile_number || "-",
+        idNumber: usageData.user?.id_number || "-",
+        storeName: usageData.store?.name || "-",
+        placeName: usageData.store?.place?.name || "-",
+        usedAt: usageData.usedAt
+          ? new Date(usageData.usedAt).toISOString()
+          : null,
+        usedDiscount: Boolean(usageData.usedDiscount),
+        usageDate: usageData.usageDate || "",
+      };
+    });
+
+    return {
+      success: true,
+      message: "تم جلب جميع الاستخدامات بنجاح",
+      data: normalizedUsages,
+    };
+  } catch (error) {
+    console.error(error);
+    return {
+      success: false,
+      message: "فشل في جلب جميع الاستخدامات",
+      data: [],
+    };
+  }
+}
+
 export async function checkUsageAllowed(
   userId: string,
   subscriptionId: string,
